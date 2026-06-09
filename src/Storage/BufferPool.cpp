@@ -4,7 +4,13 @@
 
 #include "../../include/AkatsukiDB/Storage/BufferPool.hpp"
 
+/*
+ in c++
+ the objects is created before when the constructor called before {}
+ so we make it with initialization list : _page(string s)
+ */
 BufferPool::BufferPool(const std::string &dbFilePath):_pageManager(dbFilePath),_cache(MaxCapacity) {
+
     _cache.OnEvict = [this](std::shared_ptr<Page> page) {
         // Dereference the pointer (*) to pass the actual Page reference to WritePage
         this->_pageManager.WritePage(*page);
