@@ -2,10 +2,12 @@
 #include <string>
 #include <vector>
 
+#include "AkatsukiDB/Table/ColumnDefinition.hpp"
+
 class CreateTableStatement : public IStatement {
 public:
     std::string TableName;
-    std::vector<AkatsukiDB::Table::ColumnDefinition> Columns;
+    std::vector<ColumnDefinition> Columns;
     std::vector<std::string> PrimaryKey;
     bool AutoIncrement = false;
     std::vector<AkatsukiDB::Table::ForeignKeyDef> ForeignKeys;
