@@ -82,6 +82,7 @@ return std::span<uint8_t>(_data.data() + 16 + slotIndex*rowSize,rowSize);
   _isDirty=false;
 }
 
+uint8_t* Page:: MutableData() { return _data.data(); } // return pointer for the first byte , and he can edit/write in the data
 
 /*
 Page Format :

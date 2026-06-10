@@ -41,6 +41,8 @@ class Page {
 
     void MarkDirty();
     void ClearDirty();
+
+   uint8_t* MutableData();
 };
 
 

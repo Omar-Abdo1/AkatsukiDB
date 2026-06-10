@@ -25,6 +25,12 @@ add_library(AkatsukiDB_lib STATIC
         src/Table/TableManager.cpp
         src/Table/RowSerializer.cpp
         src/Table/TableRegistry.cpp
+        src/Index/IndexKey.cpp
+        include/AkatsukiDB/Index/IndexKey.hpp
+        src/Index/BPlusTreeNode.cpp
+        include/AkatsukiDB/Index/BPlusTreeNode.hpp
+        src/Index/BPlusTree.cpp
+        include/AkatsukiDB/Index/BPlusTree.hpp
 )
 
 # Tell the library where to find its own header files.
