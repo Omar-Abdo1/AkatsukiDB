@@ -1,6 +1,7 @@
 //
 // Created by omarabdo on 6/10/26.
 //
+#pragma once
 
 #ifndef AKATSUKIDB_CPP_EXPRESSION_HPP
 #define AKATSUKIDB_CPP_EXPRESSION_HPP
@@ -39,7 +40,7 @@ class Literal : public Expression
 {
  public:
   std::string Column ;
-  std::string TableName="" ; // can be empty (null)
+  std::optional<std::string> TableName; // can be empty (null)
 };
 
  class UnaryExpr : public Expression

@@ -1,8 +1,10 @@
+#pragma once
 
 #include <string>
 #include <vector>
 
 #include "AkatsukiDB/Table/ColumnDefinition.hpp"
+#include "AkatsukiDB/Table/TableDefinition.hpp"
 
 class CreateTableStatement : public IStatement {
 public:
@@ -10,5 +12,5 @@ public:
     std::vector<ColumnDefinition> Columns;
     std::vector<std::string> PrimaryKey;
     bool AutoIncrement = false;
-    std::vector<AkatsukiDB::Table::ForeignKeyDef> ForeignKeys;
+    std::vector<ForeignKeyDef> ForeignKeys;
 };

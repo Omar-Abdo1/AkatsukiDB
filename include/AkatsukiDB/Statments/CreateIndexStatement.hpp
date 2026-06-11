@@ -1,5 +1,6 @@
 #include <string>
 #include <vector>
+#pragma once
 
 class CreateIndexStatement : public IStatement {
 public:

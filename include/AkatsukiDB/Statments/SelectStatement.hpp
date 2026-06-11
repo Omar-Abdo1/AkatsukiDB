@@ -2,6 +2,8 @@
 #include <optional>
 #include <vector>
 
+#pragma once
+
 #include "AkatsukiDB/Expressions/Expression.hpp"
 
 struct OrderByClause {

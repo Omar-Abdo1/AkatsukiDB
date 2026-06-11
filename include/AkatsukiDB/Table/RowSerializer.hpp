@@ -1,6 +1,7 @@
 //
 // Created by omarabdo on 6/9/26.
 //
+#pragma once
 
 #ifndef AKATSUKIDB_CPP_ROWSERIALIZER_HPP
 #define AKATSUKIDB_CPP_ROWSERIALIZER_HPP

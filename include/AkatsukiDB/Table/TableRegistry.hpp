@@ -1,6 +1,7 @@
 //
 // Created by omarabdo on 6/9/26.
 //
+#pragma once
 
 #ifndef AKATSUKIDB_CPP_TABLEREGISTRY_HPP
 #define AKATSUKIDB_CPP_TABLEREGISTRY_HPP

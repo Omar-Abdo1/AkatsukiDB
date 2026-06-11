@@ -39,7 +39,7 @@ std::shared_ptr<Page> BufferPool::GetPage(int pageId) {
 
         _cache.Put(pageId,page);
     }
-    return page;
+    return page;// return a copy of who is calling me so ref count increase 
 }
 
 void BufferPool::FlushAll() {

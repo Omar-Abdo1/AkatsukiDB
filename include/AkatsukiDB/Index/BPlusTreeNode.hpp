@@ -1,6 +1,7 @@
 //
 // Created by omarabdo on 6/10/26.
 //
+#pragma once
 
 #ifndef AKATSUKIDB_CPP_BPLUSTREENODE_HPP
 #define AKATSUKIDB_CPP_BPLUSTREENODE_HPP

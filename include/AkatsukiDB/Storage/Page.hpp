@@ -1,6 +1,7 @@
 //
 // Created by omarabdo on 6/7/26.
 //
+#pragma once
 
 #ifndef AKATSUKIDB_CPP_PAGE_HPP
 #define AKATSUKIDB_CPP_PAGE_HPP
