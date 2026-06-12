@@ -11,6 +11,8 @@
 #include <span>
 #include <stdexcept>
 
+#include "AkatsukiDB/Table/ColumnDefinition.hpp"
+
 
 #ifdef _MSC_VER
     #include <stdlib.h>
@@ -34,10 +36,33 @@ public:
 
     explicit IndexKey(std::span<const uint8_t> span);
 
-    template<typename... Args> // like params in c#
+    // (for compile‑time known arguments)
+    template<typename... Args>
     explicit IndexKey(Args... args) : _data{} {
         size_t offset = 0;
-        (WriteValue(args, offset), ...); // it just fold expression make in compile time
+        (WriteValue(args, offset), ...);
+        if (offset > Size) throw std::runtime_error("IndexKey OVERFLOW");
+    }
+
+    //(runtime collection)
+    explicit IndexKey(std::span<const DbObject> values) : _data{} {
+        size_t offset = 0;
+        for (const auto& val : values) {
+            if (std::holds_alternative<int>(val)) {
+                WriteValue(std::get<int>(val), offset);
+            } else if (std::holds_alternative<double>(val)) {
+                WriteValue(std::get<double>(val), offset);
+            } else if (std::holds_alternative<std::string>(val)) {
+                WriteValue(std::get<std::string>(val), offset);
+            } else if (std::holds_alternative<bool>(val)) {
+                WriteValue(static_cast<int>(std::get<bool>(val)), offset);
+            } else if (std::holds_alternative<std::monostate>(val)) {
+                if (offset + 1 > Size) throw std::runtime_error("IndexKey overflow (NULL marker)");
+                _data[offset++] = 0x00;
+            } else {
+                throw std::runtime_error("Unsupported DbObject type for IndexKey");
+            }
+        }
         if (offset > Size) throw std::runtime_error("IndexKey OVERFLOW");
     }
 
