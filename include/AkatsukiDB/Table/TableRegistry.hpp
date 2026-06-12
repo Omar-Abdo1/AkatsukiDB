@@ -14,7 +14,7 @@
 
 class TableRegistry {
 
-    StorageLayout _layout;
+    StorageLayout& _layout;
     std::unordered_map<std::string, TableDefinition> _schemas;
 
     void LoadAllSchemas();
@@ -23,7 +23,7 @@ class TableRegistry {
 
 public:
 
-    explicit TableRegistry(StorageLayout layout);
+    explicit TableRegistry(StorageLayout &layout);
 
     std::vector<std::string> GetAllTableNames() const;
 

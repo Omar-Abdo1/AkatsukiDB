@@ -82,8 +82,8 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(TableDefinition,Name,RowSizeByte
 /*
 the library literally copy-pasted a hidden to_json and from_json function into your code during the build step */
 
-TableRegistry::TableRegistry(StorageLayout layout)
-    : _layout(std::move(layout))
+TableRegistry::TableRegistry(StorageLayout& layout)
+    : _layout(layout)
 {
     LoadAllSchemas();
 }
