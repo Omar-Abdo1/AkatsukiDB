@@ -31,7 +31,17 @@ add_library(AkatsukiDB_lib STATIC
         src/AQL/Tokenizer.cpp
         src/AQL/Parser.cpp
         src/AQL/QueryValidatorAndBinder.cpp
-        include/AkatsukiDB/AQL/QueryValidatorAndBinder.hpp
+        src/Engine/AkatsukiEngine.cpp
+        src/Engine/QueryResult.cpp
+        src/AQL/Executor/Executor.cpp
+        src/AQL/Executor/ExecuteInsert.cpp
+        src/AQL/Executor/ExecuteExpression.cpp
+        src/AQL/Executor/ExecuteCreate.cpp
+        src/AQL/Executor/ExecuteDrop.cpp
+        src/AQL/Executor/ExecuteSelect.cpp
+        src/AQL/Executor/ExecuteUpdate.cpp
+        src/AQL/Executor/ExecuteDelete.cpp
+        src/AQL/ScanPlanner.cpp
 )
 
 # Tell the library where to find its own header files.
