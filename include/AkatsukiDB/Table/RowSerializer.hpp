@@ -13,7 +13,6 @@
 
 #include "ColumnDefinition.hpp"
 
-using DbRow = std::unordered_map<std::string, DbObject>; 
 class RowSerializer {
 
 public:

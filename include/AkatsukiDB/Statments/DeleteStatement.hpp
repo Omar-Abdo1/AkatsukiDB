@@ -2,6 +2,9 @@
 
 #include <memory>
 
+#include "IStatement.hpp"
+#include "AkatsukiDB/Expressions/Expression.hpp"
+
 class DeleteStatement : public IStatement {
 public:
     std::string TableName;

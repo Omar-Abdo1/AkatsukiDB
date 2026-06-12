@@ -7,9 +7,11 @@
 #define AKATSUKIDB_CPP_COLUMNDEFINITION_HPP
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <variant>
 
-using DbObject = std::variant<int,double,std::string,bool>; // like Object in C#
+using DbObject = std::variant<std::monostate,int,double,std::string,bool>; // like Object in C#
+using DbRow = std::unordered_map<std::string, DbObject>;
 
 #endif //AKATSUKIDB_CPP_COLUMNDEFINITION_HPP
 struct  ColumnDefinition {
