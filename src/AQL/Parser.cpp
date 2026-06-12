@@ -144,6 +144,7 @@ std::unique_ptr<IStatement> Parser::ParseCreateTable() {
                 ++_pos;
                 stmt->PrimaryKey.push_back(col.Name);
                 col.Nullable = false;
+                col.IsUnique=true;
             } else if (kw == "auto") {
                 ++_pos;
                 stmt->AutoIncrement = true;
