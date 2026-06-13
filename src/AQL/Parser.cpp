@@ -163,7 +163,12 @@ std::unique_ptr<IStatement> Parser::ParseCreateTable() {
                 std::string refTable = ExpectName();
                 Expect(".");
                 std::string refColumn = ExpectName();
-                OnDelete onDelete = Match("cascade") ? OnDelete::CASCADE : OnDelete::RESTRICT;
+                OnDelete onDelete;
+
+                if (Match("cascade"))
+                   onDelete= OnDelete::CASCADE;
+                else onDelete = OnDelete::RESTRICT ,++_pos ;
+
                 ForeignKeyDef fk;
                 fk.Column = col.Name;
                 fk.RefColumn = refColumn;
@@ -594,6 +599,7 @@ std::unique_ptr<Expression> Parser::ParseTerm() {
             auto colRef = std::make_unique<ColumnRef>();
             colRef->TableName = name;
             colRef->Column = col;
+            colRef->WasQualified = true;   // ← user wrote table.col explicitly
             return colRef;
         }
         auto colRef = std::make_unique<ColumnRef>();
