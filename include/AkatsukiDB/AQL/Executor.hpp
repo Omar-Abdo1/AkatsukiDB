@@ -69,6 +69,7 @@ private:
     QueryResult ExecuteTruncate(TruncateStatement& stmt);
     QueryResult ExecuteShow(ShowStatement& stmt);
 
+    // for show
    QueryResult ShowSchema(const std::string& tableName);
     QueryResult ShowIndexes(const std::string& tableName);
      QueryResult ShowTables();
@@ -80,16 +81,61 @@ private:
 
       void OpenTable(const std::string& name);
 
+    // for delete/updata/select to get the rows from where expression
  std::vector<RowEntry> GetRowEntries(TableManager& tm,
     const TableDefinition& def, const ScanPlan& plan);
 
  bool PassesFilter(const DbRow& row, const ScanPlan& plan);
 
+    // for delete
  std::optional<std::string> CheckDependents(const std::string& tableName,
     const DbRow& row, const TableDefinition& def);
 
  bool HasDependents(const std::string& fromTable,
      const std::string& fkCol, const DbObject& pkVal);
+
+
+    // for select
+ void PrefixRow(DbRow& target, const DbRow& source,
+                   const std::string& table, const std::string& alias);
+
+ std::vector<DbRow> HashJoin(
+     const std::vector<DbRow>& left,
+     const std::vector<DbRow>& right,
+     const std::string& leftCol,
+     const std::string& rightCol,
+     bool isLeft);
+
+ void GetJoinColumns(Expression& on,
+     std::string& leftCol, std::string& rightCol);
+
+ std::vector<DbRow> ApplyGroupBy(
+     const std::vector<DbRow>& rows,
+     const std::vector<std::string>& groupCols,
+     const std::vector<SelectColumn>& selectCols);
+
+ DbRow ComputeGroup(
+     const std::vector<const DbRow*>& group,
+     const std::vector<std::string>& groupCols,
+     const std::vector<SelectColumn>& selectCols);
+
+ void ApplyOrderBy(std::vector<DbRow>& rows,
+     const std::vector<OrderByClause>& order);
+
+ std::vector<std::string> GetOutputColumns(
+     const std::vector<SelectColumn>& cols,
+     const TableDefinition& def,
+     const std::vector<JoinClause>& joins);
+
+ std::vector<DbRow> ProjectRows(
+     const std::vector<DbRow>& rows,
+     const std::vector<SelectColumn>& cols);
+
+    std::vector<DbRow> ApplyWindowFunctions(
+    std::vector<DbRow>& rows,
+    const std::vector<SelectColumn>& selectCols);
+
+    std::vector<DbRow>ApplyDistinct(const std::vector<DbRow>& rows) ;
 
 
     // For Expressions
