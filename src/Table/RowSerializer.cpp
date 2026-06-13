@@ -4,6 +4,7 @@
 
 #include "../../include/AkatsukiDB/Table/RowSerializer.hpp"
 #include <cstring>
+#include <stdexcept>
 
 std::vector<uint8_t> RowSerializer::Serialize(const DbRow& row, const std::vector<ColumnDefinition>& columns, int rowSizeBytes) {
 
@@ -22,14 +23,32 @@ std::vector<uint8_t> RowSerializer::Serialize(const DbRow& row, const std::vecto
         const DbObject& value = it->second;
 
         if (col.Type == "int") {
+            int intVal = 0;
             if (std::holds_alternative<int>(value)) {
-                WriteInt(slice, std::get<int>(value));
+                intVal = std::get<int>(value);
+            } else if (std::holds_alternative<double>(value)) {
+                intVal = static_cast<int>(std::get<double>(value));   // truncates (5.52 → 5)
+            } else if (std::holds_alternative<bool>(value)) {
+                intVal = std::get<bool>(value) ? 1 : 0;
+            } else if (std::holds_alternative<std::string>(value)) {
+                try { intVal = std::stoi(std::get<std::string>(value)); }
+                catch (...) { intVal = 0; }
             }
+            WriteInt(slice, intVal);
         }
         else if (col.Type == "float") {
+            double doubleVal = 0.0;
             if (std::holds_alternative<double>(value)) {
-                WriteDouble(slice, std::get<double>(value));
+                doubleVal = std::get<double>(value);
+            } else if (std::holds_alternative<int>(value)) {
+                doubleVal = static_cast<double>(std::get<int>(value)); // 9000 → 9000.0
+            } else if (std::holds_alternative<bool>(value)) {
+                doubleVal = std::get<bool>(value) ? 1.0 : 0.0;
+            } else if (std::holds_alternative<std::string>(value)) {
+                try { doubleVal = std::stod(std::get<std::string>(value)); }
+                catch (...) { doubleVal = 0.0; }
             }
+            WriteDouble(slice, doubleVal);
         }
         else if (col.Type == "bool") {
             if (std::holds_alternative<bool>(value)) {
