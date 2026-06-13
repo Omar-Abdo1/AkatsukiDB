@@ -41,6 +41,7 @@ class Literal : public Expression
  public:
   std::string Column ;
   std::optional<std::string> TableName; // can be empty (null)
+  bool WasQualified =false;
 };
 
  class UnaryExpr : public Expression
