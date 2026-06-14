@@ -194,5 +194,4 @@ namespace AkatsukiDB::Console {
 int main() {
 
     AkatsukiDB::Console::Run();
-
 }

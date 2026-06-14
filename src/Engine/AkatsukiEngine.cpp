@@ -17,7 +17,6 @@
 #include <filesystem>
 
 
-
 AkatsukiEngine::AkatsukiEngine(const std::string& dataDirectory) {
     _layout = std::make_unique<StorageLayout>(dataDirectory);
     _registry = std::make_unique<TableRegistry>(*_layout);
