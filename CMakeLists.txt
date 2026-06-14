@@ -15,34 +15,13 @@ FetchContent_MakeAvailable(json)
 
 
 
-# Bundle all your engine code into one static library.
-add_library(AkatsukiDB_lib STATIC
-        src/Storage/Page.cpp
-        src/Storage/PageManager.cpp
-        src/Storage/LruCache.cpp
-        src/Storage/BufferPool.cpp
-        src/Storage/StorageLayout.cpp
-        src/Table/TableManager.cpp
-        src/Table/RowSerializer.cpp
-        src/Table/TableRegistry.cpp
-        src/Index/IndexKey.cpp
-        src/Index/BPlusTreeNode.cpp
-        src/Index/BPlusTree.cpp
-        src/AQL/Tokenizer.cpp
-        src/AQL/Parser.cpp
-        src/AQL/QueryValidatorAndBinder.cpp
-        src/Engine/AkatsukiEngine.cpp
-        src/Engine/QueryResult.cpp
-        src/AQL/Executor/Executor.cpp
-        src/AQL/Executor/ExecuteInsert.cpp
-        src/AQL/Executor/ExecuteExpression.cpp
-        src/AQL/Executor/ExecuteCreate.cpp
-        src/AQL/Executor/ExecuteDrop.cpp
-        src/AQL/Executor/ExecuteSelect.cpp
-        src/AQL/Executor/ExecuteUpdate.cpp
-        src/AQL/Executor/ExecuteDelete.cpp
-        src/AQL/ScanPlanner.cpp
+
+file(GLOB_RECURSE AKATSUKI_SOURCES CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
 )
+
+# Bundle all your engine code into one static library.
+add_library(AkatsukiDB_lib STATIC ${AKATSUKI_SOURCES})
 
 # Tell the library where to find its own header files.
 target_include_directories(AkatsukiDB_lib PUBLIC include)
