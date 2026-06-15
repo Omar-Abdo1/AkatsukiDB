@@ -24,7 +24,7 @@ QueryValidatorAndBinder::BuildAvailable(const std::string& mainTable,
 
     return available;
 }
-
+// if we have name="omar" then we have -> employee.name=omar , name=omar , e.name=omar (if there an alias)
 void QueryValidatorAndBinder::AddTable(const std::string& tableName,
                                        const std::optional<std::string>& alias,
                                        std::unordered_map<std::string, std::string>& available) {
@@ -42,7 +42,7 @@ void QueryValidatorAndBinder::AddTable(const std::string& tableName,
 
         auto it = available.find(colName);
         if (it != available.end())
-            it->second = "__ambiguous__";
+            available[colName] = "__ambiguous__";
         else
             available[colName] = name;
 
@@ -93,7 +93,7 @@ std::optional<std::string> QueryValidatorAndBinder::ValidateSelect(SelectStateme
     for (auto& ob : stmt.OrderBy) {
         std::string col = ob.Column;
         std::transform(col.begin(), col.end(), col.begin(), ::tolower);
-        if (available.find(col) == available.end())
+        if (available.find(col) == available.end()) // column with it is all combinations do not exist !!
             return "Column " + ob.Column + " in ORDER BY not found";
     }
 
@@ -201,15 +201,13 @@ std::optional<std::string> QueryValidatorAndBinder::ValidateExpression(
         return ValidateExpression(*like->Value, available);
 
     if (auto* fn = dynamic_cast<FunctionExpr*>(&expr)) {
-        for (auto& arg : fn->Arguments) {
+         auto& arg =   fn->Arguments;
             // Skip "*" column
-            if (auto* cr = dynamic_cast<ColumnRef*>(arg.get())) {
-                if (cr->Column == "*") continue;
-            }
+            if (auto* cr = dynamic_cast<ColumnRef*>(arg.get()))
+                if (cr->Column == "*")
+                    return std::nullopt;
             if (auto err = ValidateExpression(*arg, available)) return err;
         }
         return std::nullopt;
-    }
 
-    return std::nullopt;
 }

@@ -17,7 +17,7 @@ struct ScanPlan {
     IndexKey            RangeEnd        = IndexKey::Max();
     bool                RangeStartOpen  = false; // true = >, false = >=
     bool                RangeEndOpen    = false; // true = <, false = <=
-    Expression*         FilterAfter     = nullptr; // conditions index cannot handle
+    std::vector<Expression*>         FilterAfter  ; // conditions index cannot handle
 };
 
 class ScanPlanner {
@@ -32,7 +32,8 @@ public:
 private:
     IndexMap& _indexes;
 
-    ScanPlan* TryIndex(const std::string& table, Expression* expr, ScanPlan& out);
+    bool TryIndex(const std::string& table, Expression* expr, ScanPlan& out);
+    void FlatAnd(std::vector<Expression*>& exprs,Expression* expr);
 
     bool TryPoint  (Expression* expr, std::string& col, DbObject& val);
     bool TryBetween(Expression* expr, std::string& col, DbObject& lo, DbObject& hi);

@@ -294,7 +294,7 @@ std::unique_ptr<IStatement> Parser::ParseSelect() {
     stmt->TableName = ExpectName();
     if (!IsAtEnd() && Current().GetType() == TokenType::Identifier) {
         stmt->Alias = Expect(TokenType::Identifier).GetValue();
-        std::transform(stmt->Alias.begin(), stmt->Alias.end(), stmt->Alias.begin(), ::tolower);
+        std::transform(stmt->Alias.value().begin(), stmt->Alias.value().end(), stmt->Alias.value().begin(), ::tolower);
     }
     while (IsJoinStart()) {
         stmt->Joins.push_back(ParseJoin());
@@ -634,7 +634,7 @@ std::unique_ptr<Expression> Parser::ParseTerm() {
      if (t.GetType() == TokenType::NullLiteral) {
         ++_pos;
         auto lit = std::make_unique<Literal>();
-        lit->Value = DbObject(); // null
+        lit->Value = std::monostate();
         return lit;
     }
      if (t.GetType() == TokenType::LParen) {
@@ -653,7 +653,7 @@ DbObject Parser::ParseLiteralValue() {
     if (t.GetType() == TokenType::FloatLiteral) return std::stod(t.GetValue());
     if (t.GetType() == TokenType::StringLiteral) return t.GetValue();
     if (t.GetType() == TokenType::BooleanLiteral) return (t.GetValue() == "true");
-    if (t.GetType() == TokenType::NullLiteral) return DbObject();
+    if (t.GetType() == TokenType::NullLiteral) return std::monostate();
     throw ParseException("Expected literal value but got '" + t.GetValue() + "'");
 }
 
@@ -662,18 +662,16 @@ std::unique_ptr<Expression> Parser::ParseFunction() {
     std::transform(name.begin(), name.end(), name.begin(), ::tolower);
     ++_pos;
     Expect("(");
-    std::vector<std::unique_ptr<Expression>> args;
+    std::unique_ptr<Expression> args;
     if (!Match(")")) {
-        do {
             if (Current().GetType() == TokenType::Star) {
                 auto star = std::make_unique<ColumnRef>();
                 star->Column = "*";
-                args.push_back(std::move(star));
+                args = std::move(star);
                 ++_pos;
             } else {
-                args.push_back(ParseExpression());
+                args= ParseExpression();
             }
-        } while (Match(","));
         Expect(")");
     }
     auto func = std::make_unique<FunctionExpr>();

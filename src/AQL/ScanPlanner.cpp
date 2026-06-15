@@ -9,20 +9,45 @@ ScanPlan ScanPlanner::Decide(const std::string& table, Expression* where) {
     ScanPlan plan;
     if (!where) return plan; // full scan
 
-    ScanPlan candidate;
-    if (TryIndex(table, where, candidate))
-        return candidate;
+    std::vector<Expression*>exprs;
+    FlatAnd(exprs,where);
 
-    // no index found — full scan, filter everything
-    plan.Type        = ScanType::Full;
-    plan.FilterAfter = where;
+    int choose=-1;
+    for (int i=0;i<exprs.size();++i) {
+        // try to choose some condition to use index on
+        if (TryIndex(table, exprs[i], plan)) {
+             choose=i;
+            break;
+        }
+    }
+    if (choose==-1) {
+        plan.FilterAfter=exprs;
+        return plan;
+    }
+
+    std::vector<Expression*> tmp;
+    for (int i=0;i<exprs.size();++i) if (i!=choose) tmp.push_back(exprs[i]);
+    plan.FilterAfter=tmp;
     return plan;
 }
 
-ScanPlan* ScanPlanner::TryIndex(const std::string& table,
-    Expression* expr, ScanPlan& out)
+void ScanPlanner::FlatAnd(std::vector<Expression*>& exprs,Expression* expr) {
+    if (auto * bin = dynamic_cast<BinaryExpr*>(expr)) {
+         if (bin->Op=="and") {
+             FlatAnd(exprs,bin->Left.get());
+             FlatAnd(exprs,bin->Right.get());
+         }
+        else exprs.push_back(expr);
+    }
+    else if (expr) {
+        exprs.push_back(expr);
+    }
+}
+
+bool ScanPlanner::TryIndex(const std::string& table,
+    Expression* expr,ScanPlan & out)
 {
-    if (!expr) return nullptr;
+    if (!expr) return false;
 
     std::string col;
     DbObject val, lo, hi;
@@ -35,7 +60,7 @@ ScanPlan* ScanPlanner::TryIndex(const std::string& table,
             out.Type     = ScanType::Point;
             out.Index    = tree;
             out.PointKey = IndexKey(std::span<const DbObject>({val}));
-            return &out;
+            return true;
         }
     }
 
@@ -49,7 +74,7 @@ ScanPlan* ScanPlanner::TryIndex(const std::string& table,
             out.RangeEnd       = IndexKey(std::span<const DbObject>({hi}));
             out.RangeStartOpen = false;
             out.RangeEndOpen   = false;
-            return &out;
+            return true;
         }
     }
 
@@ -62,7 +87,7 @@ ScanPlan* ScanPlanner::TryIndex(const std::string& table,
             out.RangeStart     = IndexKey(std::span<const DbObject>({val}));
             out.RangeEnd       = IndexKey::Max();
             out.RangeStartOpen = open;
-            return &out;
+            return true;
         }
     }
 
@@ -75,32 +100,11 @@ ScanPlan* ScanPlanner::TryIndex(const std::string& table,
             out.RangeStart   = IndexKey::Min();
             out.RangeEnd     = IndexKey(std::span<const DbObject>({val}));
             out.RangeEndOpen = open;
-            return &out;
+            return true;
         }
     }
 
-    // AND — try each side, use first that has index
-    if (auto* bin = dynamic_cast<BinaryExpr*>(expr);
-        bin && bin->Op == "and")
-    {
-        ScanPlan left, right;
-        bool hasLeft  = TryIndex(table, bin->Left.get(),  left)  != nullptr;
-        bool hasRight = TryIndex(table, bin->Right.get(), right) != nullptr;
-
-        if (hasLeft) {
-            out = left;
-            // the other side becomes a filter
-            out.FilterAfter = bin->Right.get();
-            return &out;
-        }
-        if (hasRight) {
-            out = right;
-            out.FilterAfter = bin->Left.get();
-            return &out;
-        }
-    }
-
-    return nullptr;
+   return false;
 }
 
 bool ScanPlanner::TryPoint(Expression* expr,
@@ -166,7 +170,7 @@ BPlusTree* ScanPlanner::FindIndex(const std::string& table,
 {
     auto it = _indexes.find(table);
     if (it == _indexes.end()) return nullptr;
-    for (auto& [def, tree] : it->second) {
+    for (auto& [def, tree] : _indexes[table]) {
         if (def.Columns.size() == 1 &&
             def.Columns[0] == col)
             return tree.get();

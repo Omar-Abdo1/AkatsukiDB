@@ -27,7 +27,7 @@ struct JoinClause {
 struct   SelectColumn
 {
  std::unique_ptr<Expression> Column ;
-std:: string Alias="";
+std::optional<std::string> Alias="";
  bool IsStar= false;
  bool IsWindow =false;
  std::string WindowFunc="" ;  // "row_number", "sum"
@@ -40,7 +40,7 @@ public:
     std::vector<SelectColumn> Columns;
     bool IsDistinct = false;
     std::string TableName;
-     std::string Alias=""; // can be empty
+     std::optional<std::string> Alias; // can be empty
     std::unique_ptr<Expression> Where;
 
     int Offset =-1 ; // -1 means is not set
