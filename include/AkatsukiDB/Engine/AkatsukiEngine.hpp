@@ -30,6 +30,8 @@ private:
     std::unique_ptr<TableRegistry> _registry;
     std::unique_ptr<Executor> _executor;
 
+    // in-memory :
+
     // table name -> TableManager
     std::unordered_map<std::string, std::unique_ptr<TableManager>> _tables;
 

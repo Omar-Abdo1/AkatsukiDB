@@ -72,6 +72,8 @@ void AkatsukiEngine::BuildReferencedByMap() {
             std::string refTable = fk.RefTable;
             std::transform(refTable.begin(), refTable.end(), refTable.begin(), ::tolower);
             _referencedBy[refTable].push_back({name, fk});
+            // employee fk-> for department
+            // reverse graph  department->employee , so when update/delete from department
         }
     }
 }
@@ -93,9 +95,7 @@ void AkatsukiEngine::CloseTable(const std::string& name) {
 }
 
 void AkatsukiEngine::Dispose() {
-    std::vector<std::string> names;
-    for (auto& p : _tables) names.push_back(p.first);
-    for (const auto& name : names)
+    for (const auto& [name,tm] : _tables)
         CloseTable(name);
 }
 
