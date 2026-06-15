@@ -21,7 +21,7 @@ public:
 
     // Queries
     std::vector<std::pair<int, short>> PointQuery(const IndexKey& key);
-    std::vector<std::pair<int, short>> RangeQuery(const IndexKey& start, const IndexKey& end);
+    std::vector<std::pair<int, short>> RangeQuery(const IndexKey& start, const IndexKey& end,bool startOpen=false,bool endOpen=false);
 
     void Insert(const InsertEntry& entry);
     bool Delete(const IndexKey& key);
@@ -33,7 +33,6 @@ private:
     BufferPool _bufferPool;
     int _rootPageId;
 
-    void SaveNode(BPlusTreeNode& node);
     BPlusTreeNode LoadNode(int pageId);
     void WriteRootPageId(int rootId);
     int ReadRootPageId();

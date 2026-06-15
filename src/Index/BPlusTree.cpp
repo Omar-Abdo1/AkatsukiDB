@@ -4,6 +4,7 @@
 
 #include "../../include/AkatsukiDB/Index/BPlusTree.hpp"
 
+// has it own bufferpool ,  and the node has pointer to the page in the bufferpool
 BPlusTree::BPlusTree(const std::string& idxFilePath)
     : _bufferPool(idxFilePath)
 {
@@ -12,7 +13,6 @@ BPlusTree::BPlusTree(const std::string& idxFilePath)
         int rootId = _bufferPool.AllocatePage();
         auto page = _bufferPool.GetPage(rootId);
         auto root = BPlusTreeNode::CreateLeaf(page, rootId);
-        SaveNode(root);
         _rootPageId = rootId;
         WriteRootPageId(_rootPageId);
     } else {
@@ -24,13 +24,6 @@ void BPlusTree::Flush() {
     _bufferPool.FlushAll();
 }
 
-// ----------------------------------------------------------------------------
-// Node I/O helpers
-// ----------------------------------------------------------------------------
-void BPlusTree::SaveNode(BPlusTreeNode& /*node*/) {
-    // Node's setters already call MarkDirty(), so nothing else required.
-    // The page is owned by the node's shared_ptr; no extra action needed.
-}
 
 BPlusTreeNode BPlusTree::LoadNode(int pageId) {
     auto page = _bufferPool.GetPage(pageId);
@@ -91,14 +84,15 @@ std::vector<std::pair<int, short>> BPlusTree::PointQuery(const IndexKey& key) {
     return result;
 }
 
-std::vector<std::pair<int, short>> BPlusTree::RangeQuery(const IndexKey& start, const IndexKey& end) {
+std::vector<std::pair<int, short>> BPlusTree::RangeQuery(const IndexKey& start, const IndexKey& end,bool startOpen,bool endOpen) {
     std::vector<std::pair<int, short>> result;
     auto leaf = FindLeaf(start);
     int startIdx = leaf.FindKeyIndex(start);
     while (true) {
         for (int i = startIdx; i < leaf.GetKeyCount(); ++i) {
             auto key = leaf.GetKey(i);
-            if (key>end) return result;
+            if (key>end || (endOpen && key==end) ) return result;
+            if (startOpen && key==start)continue;
             result.push_back(leaf.GetRowLocation(i));
         }
         startIdx = 0;
@@ -121,14 +115,12 @@ void BPlusTree::Insert(const InsertEntry& entry) {
         newRoot.SetKey(0, result->key);// promoted key
         newRoot.SetChildPageId(1, result->pageId); // right child is the new node
         newRoot.SetKeyCount(1);
-        SaveNode(newRoot);
         _rootPageId = newRootId;
         WriteRootPageId(_rootPageId);
         /*
               c0 k0 c1  this is the new root
             */
     }
-    SaveNode(root);
 }
 
 std::optional<InsertEntry> BPlusTree::InsertRec(BPlusTreeNode& cur, const InsertEntry& entry) {
@@ -204,14 +196,9 @@ InsertEntry BPlusTree::SplitLeaf(BPlusTreeNode& leaf, const InsertEntry& newEntr
     if (newLeaf.GetNextLeafPageId() != -1) {
         auto next = LoadNode(newLeaf.GetNextLeafPageId());
         next.SetPrevLeafPageId(newLeaf.GetPageId());
-        SaveNode(next);
     }
-
-    SaveNode(leaf);
-    SaveNode(newLeaf);
     return {total[mid].key, newLeaf.GetPageId(), total[mid].slotIndex};
     // middle element will be promoted + pageid because it will be the child
-
 }
 
 void BPlusTree::InsertIntoInternal(BPlusTreeNode& internal, const IndexKey& key, int childPageId) {
@@ -262,10 +249,7 @@ InsertEntry BPlusTree::SplitInternal(BPlusTreeNode& internal, const IndexKey& ke
         newInternal.SetChildPageId(i, allChildren[mid + 1 + i]);
     newInternal.SetKeyCount(rightKeyCount);
 
-    SaveNode(internal);
-    SaveNode(newInternal);
     return {promotedKey, newInternal.GetPageId(), 0};
-
 }
 
 bool BPlusTree::Delete(const IndexKey& key) {
@@ -330,7 +314,6 @@ bool BPlusTree::DeleteFromLeaf(BPlusTreeNode& leaf, const IndexKey& key) {
         leaf.SetRowLocation(pos, pid, slot);
     }
     leaf.SetKeyCount(leaf.GetKeyCount() - 1);
-    SaveNode(leaf);
     return true;
 }
 
@@ -367,9 +350,6 @@ void BPlusTree::BorrowFromLeft(BPlusTreeNode& parent, int childIdx, BPlusTreeNod
         parent.SetKey(childIdx - 1, left.GetKey(left.GetKeyCount() - 1));
         left.SetKeyCount(left.GetKeyCount() - 1);
     }
-    SaveNode(parent);
-    SaveNode(child);
-    SaveNode(left);
 }
 
 void BPlusTree::BorrowFromRight(BPlusTreeNode& parent, int childIdx, BPlusTreeNode& child, BPlusTreeNode& right) {
@@ -405,9 +385,6 @@ void BPlusTree::BorrowFromRight(BPlusTreeNode& parent, int childIdx, BPlusTreeNo
 
         parent.SetKey(childIdx, right.GetKey(0));
     }
-    SaveNode(parent);
-    SaveNode(child);
-    SaveNode(right);
 }
 
 void BPlusTree::MergeChildren(BPlusTreeNode& parent, int leftIdx) {
@@ -427,7 +404,6 @@ void BPlusTree::MergeChildren(BPlusTreeNode& parent, int leftIdx) {
         if (right.GetNextLeafPageId() != -1) {
             auto next = LoadNode(right.GetNextLeafPageId());
             next.SetPrevLeafPageId(left.GetPageId());
-            SaveNode(next);
         }
     } else {
         // Internal node merge: insert parent separator key
@@ -454,6 +430,4 @@ void BPlusTree::MergeChildren(BPlusTreeNode& parent, int leftIdx) {
         parent.SetChildPageId(i, parent.GetChildPageId(i + 1));
     parent.SetKeyCount(parent.GetKeyCount() - 1);
 
-    SaveNode(left);
-    SaveNode(parent);
 }
