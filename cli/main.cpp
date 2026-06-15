@@ -16,6 +16,8 @@
 using namespace std;
 
 #include <nlohmann/json.hpp>
+#include <replxx.hxx>
+#include <chrono>
 
 #include <iostream>
 #include <string>
@@ -67,26 +69,110 @@ namespace AkatsukiDB::Console {
         std::cout << COLOR_RESET;
         std::cout << "\nAkatsukiDB v1.0  |  type EXIT to quit\n\n";
 
-        std::string input;
-        while (true) {
-            std::cout << COLOR_DARK_RED << "akatsuki> " << COLOR_RESET;
+        replxx::Replxx rx;
+    
+  rx.set_highlighter_callback(
+    [&](std::string const& input, replxx::Replxx::colors_t& colors) {
+        const auto& keywords = Tokenizer::GetKeywords();
 
-            if (!std::getline(std::cin, input)) break; // Handle EOF (Ctrl+D)
+        for (size_t i = 0; i < input.size(); ++i)
+            colors[i] = replxx::Replxx::Color::DEFAULT;
 
-            Trim(input);
+        size_t pos = 0;
+        while (pos < input.size()) {
+            // skip whitespace
+            while (pos < input.size() && std::isspace((unsigned char)input[pos]))
+                ++pos;
+            if (pos >= input.size()) break;
 
-            if (input.empty()) continue;
-            if (EqualsIgnoreCase(input, "exit")) break;
+            size_t start = pos;
+            char c = input[pos];
 
-            if (EqualsIgnoreCase(input, "clear") || EqualsIgnoreCase(input, "cls")) {
-                // ANSI escape code to clear the terminal screen and move cursor to top-left
-                std::cout << "\033[2J\033[1;1H";
+            // string literal
+            if (c == '"' || c == '\'') {
+                char quote = c;
+                ++pos;
+                while (pos < input.size() && input[pos] != quote) ++pos;
+                if (pos < input.size()) ++pos;
+                for (size_t i = start; i < pos; ++i)
+                    colors[i] = replxx::Replxx::Color::GREEN;
                 continue;
             }
 
-            QueryResult result = engine->Execute(input);
-            PrintResult(result);
+            // number
+            if (std::isdigit((unsigned char)c)) {
+                while (pos < input.size()
+                    && (std::isdigit((unsigned char)input[pos])
+                        || input[pos] == '.'))
+                    ++pos;
+                for (size_t i = start; i < pos; ++i)
+                    colors[i] = replxx::Replxx::Color::CYAN;
+                continue;
+            }
+
+            // keyword or identifier
+            if (std::isalpha((unsigned char)c) || c == '_') {
+                while (pos < input.size()
+                    && (std::isalnum((unsigned char)input[pos])
+                        || input[pos] == '_'))
+                    ++pos;
+                std::string word = input.substr(start, pos - start);
+                for (auto& ch : word) ch = std::tolower(ch);
+                if (keywords.count(word))
+                    for (size_t i = start; i < pos; ++i)
+                        colors[i] = replxx::Replxx::Color::MAGENTA;
+                continue;
+            }
+
+            ++pos;
         }
+    }
+);
+  
+
+rx.history_load(".akatsuki_history");
+
+while (true) {
+
+    char const* cinput = rx.input("akatsuki> ");
+
+    if (!cinput)
+        break; // Ctrl+D
+
+    std::string input(cinput);
+
+    Trim(input);
+
+    if (input.empty())
+        continue;
+
+    rx.history_add(input);
+    rx.history_save(".akatsuki_history");
+
+    if (EqualsIgnoreCase(input, "exit"))
+        break;
+
+    if (EqualsIgnoreCase(input, "clear") ||
+        EqualsIgnoreCase(input, "cls")) {
+        std::cout << "\033[2J\033[1;1H";
+        continue;
+    }
+    auto start = std::chrono::steady_clock::now();
+    QueryResult result = engine->Execute(input);
+    auto end = std::chrono::steady_clock::now();
+    double ms = std::chrono::duration<double, std::milli>(end - start).count();
+    PrintResult(result);
+    if (!result.IsError) {
+        std::cout << COLOR_DARK_GRAY
+              << "  Time: " << std::fixed << std::setprecision(3)
+              << ms << " ms"
+              << COLOR_RESET << "\n";
+    }
+}
+
+
+
+
 
         std::cout << "Goodbye.\n";
     }
@@ -118,10 +204,14 @@ namespace AkatsukiDB::Console {
                     // Check if column exists in the row map
                     auto it = row.find(col);
                     if (it != row.end()) {
-                        // Assuming your DBObject has a .ToString() or is already a string
                         auto &dbObject = it->second;
-                        cells.push_back( DbObjectToString(dbObject) );
-                    } else {
+                        if (std::holds_alternative<std::string>(dbObject)
+                               && std::get<std::string>(dbObject).empty())
+                            cells.push_back("NULL");
+                        else
+                            cells.push_back(DbObjectToString(dbObject));
+                    }
+                    else {
                         cells.push_back("NULL");
                     }
                 }
