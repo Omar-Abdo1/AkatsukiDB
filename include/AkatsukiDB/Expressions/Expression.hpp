@@ -56,7 +56,7 @@ std::string Op ; // NOT
 {
  public:
 std:: string Name ; // avg , min , func , etc..
- std::vector<std::unique_ptr<Expression>> Arguments ; // avg(a+b) , min(a*b+c)
+  std::unique_ptr<Expression> Arguments ; // avg(a+b) , min(a*b+c)
 };
 
  class IsNullExpr : public Expression
