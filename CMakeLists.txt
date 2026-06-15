@@ -14,6 +14,16 @@ FetchContent_Declare(json
 FetchContent_MakeAvailable(json)
 
 
+include(FetchContent)
+FetchContent_Declare(
+    replxx
+    GIT_REPOSITORY https://github.com/AmokHuginnsson/replxx.git
+    GIT_TAG master
+)
+
+FetchContent_MakeAvailable(replxx) # for support history like terminal 
+
+
 
 
 file(GLOB_RECURSE AKATSUKI_SOURCES CONFIGURE_DEPENDS
@@ -34,5 +44,5 @@ target_link_libraries(AkatsukiDB_lib PUBLIC nlohmann_json::nlohmann_json)
 add_executable(AkatsukiDB_Cpp cli/main.cpp)
 
 
-# through AkatsukiDB_lib straight into your executable.
-target_link_libraries(AkatsukiDB_Cpp PRIVATE AkatsukiDB_lib)
+# through AkatsukiDB_lib straight into your executable. 
+target_link_libraries(AkatsukiDB_Cpp PRIVATE AkatsukiDB_lib replxx)
