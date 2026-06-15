@@ -21,5 +21,5 @@ struct  ColumnDefinition {
  int Size=0;
  bool Nullable = true;
  bool IsUnique  = false;
- std::optional<DbObject> Default = std::nullopt;
+  std::optional<DbObject> Default = std::nullopt; // nullopt -> no default
 };

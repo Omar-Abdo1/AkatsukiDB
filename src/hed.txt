@@ -1,0 +1,3635 @@
+// === ./Table/TableManager.cpp ===
+//
+// Created by omarabdo on 6/9/26.
+//
+
+#include "../../include/AkatsukiDB/Table/TableManager.hpp"
+
+#include <cstring>
+
+std::shared_ptr<Page> TableManager::GetPageWithSpace() {
+
+    if (_bufferPool->TotalPages()==1) {
+        int firstDataPageId = _bufferPool -> AllocatePage();
+
+        auto FirstPage =  _bufferPool->GetPage(firstDataPageId);
+        FirstPage->SetFreeOffset(16);
+        FirstPage->SetPageId(  firstDataPageId);
+    }
+
+    int lastPageId = _bufferPool->TotalPages() - 1;
+    auto page = _bufferPool->GetPage(lastPageId);
+
+    int usedSpace = 16 + (page->GetSlotCount() * _rowSizeBytes);
+
+    int remainingSpace = 4096 - usedSpace;
+
+    if (remainingSpace >= _rowSizeBytes)
+        return page;
+
+    int newId = _bufferPool->AllocatePage();
+
+    page->SetNextPageId(newId); // Linking
+    page->MarkDirty();
+
+    auto NewPage =  _bufferPool->GetPage(newId);
+
+    NewPage->SetFreeOffset(16);
+    NewPage->SetPageId(newId);
+
+    return NewPage;
+}
+
+bool TableManager::IsDeleted(std::span<const uint8_t> rowBytes) const {
+    return rowBytes[_rowSizeBytes-10] == 1;
+}
+
+
+TableManager::TableManager(std::unique_ptr<BufferPool> bufferPool, int rowSizeBytes)
+    : _bufferPool(std::move(bufferPool)), _rowSizeBytes(rowSizeBytes){}
+
+std::pair<int, int> TableManager::InsertRow(std::span<const uint8_t> rowBytes) {
+
+    auto page = GetPageWithSpace();
+
+    int slotIdx = page->GetSlotCount();
+
+
+    auto slotSpan = page->GetSlot(slotIdx, _rowSizeBytes);
+
+    std::memcpy(slotSpan.data(), rowBytes.data(), _rowSizeBytes);
+
+    page->SetSlotCount(slotIdx + 1);
+    page->SetFreeOffset(page->GetFreeOffset() + _rowSizeBytes);
+    page->MarkDirty();
+
+    _bufferPool->FlushAll();
+
+    return {page->GetPageId(), slotIdx};
+}
+
+std::vector<RowEntry> TableManager::FullScan() {
+    std::vector<RowEntry> result;
+
+    for (int pageId = 1; pageId < _bufferPool->TotalPages(); ++pageId) {
+        auto page = _bufferPool->GetPage(pageId);
+
+        for (int slotIndex = 0; slotIndex < page->GetSlotCount(); ++slotIndex) {
+            auto slotSpan = page->GetSlot(slotIndex, _rowSizeBytes);
+
+            if (IsDeleted(slotSpan)) continue;
+
+            // on heap
+            std::vector<uint8_t> copiedData(slotSpan.begin(), slotSpan.end());
+            // just move the pointer
+            result.push_back({pageId, slotIndex, std::move(copiedData)});
+        }
+    }
+    return result;
+}
+
+std::vector<uint8_t> TableManager::ReadRow(int pageId, int slotIndex) {
+    auto page = _bufferPool->GetPage(pageId);
+    auto slotSpan = page->GetSlot(slotIndex, _rowSizeBytes);
+
+    // perform deep copy , copy all bytes span looks at at new heap memory then return it
+    return std::vector<uint8_t>(slotSpan.begin(), slotSpan.end());
+}
+
+void TableManager::UpdateRow(int pageId, int slotIndex, std::span<const uint8_t> newRowBytes) {
+    auto page = _bufferPool->GetPage(pageId);
+    auto slotSpan = page->GetSlot(slotIndex, _rowSizeBytes);
+
+    std::memcpy(slotSpan.data(), newRowBytes.data(), _rowSizeBytes);
+
+    page->MarkDirty();
+    _bufferPool->FlushAll();
+}
+
+void TableManager::DeleteRow(int pageId, int slotIndex) {
+    auto page = _bufferPool->GetPage(pageId);
+    auto slotSpan = page->GetSlot(slotIndex, _rowSizeBytes);
+
+    slotSpan[_rowSizeBytes - 10] = 1;
+
+    page->MarkDirty();
+    _bufferPool->FlushAll();
+}
+
+
+// === ./Table/TableRegistry.cpp ===
+//
+// Created by omarabdo on 6/9/26.
+//
+
+#include "AkatsukiDB/Table/TableRegistry.hpp"
+
+#include "../../include/AkatsukiDB/Table/TableRegistry.hpp"
+
+#include <fstream>
+#include <filesystem>
+#include <algorithm>
+#include <stdexcept>
+#include <vector>
+#include <nlohmann/json.hpp>
+
+void to_json(nlohmann::json& j, const DbObject& obj) {
+    if (std::holds_alternative<int>(obj)) {
+        j = std::get<int>(obj);
+    }
+    else if (std::holds_alternative<double>(obj)) {
+        j = std::get<double>(obj);
+    }
+    else if (std::holds_alternative<bool>(obj)) {
+        j = std::get<bool>(obj);
+    }
+    else if (std::holds_alternative<std::string>(obj)) {
+        j = std::get<std::string>(obj);
+    }
+}
+
+void from_json(const nlohmann::json& j, DbObject& obj) {
+    if (j.is_boolean()) obj = j.get<bool>();
+    else if (j.is_number_integer()) obj = j.get<int>();
+    else if (j.is_number_float()) obj = j.get<double>();
+    else if (j.is_string()) obj = j.get<std::string>();
+    else throw std::runtime_error("Invalid DbObject type");
+}
+
+namespace nlohmann {
+
+    template <>
+    struct adl_serializer<std::optional<DbObject>> {
+
+        static void to_json(json& j, const std::optional<DbObject>& opt) {
+            if (!opt.has_value()) {
+                j = nullptr;
+                return;
+            }
+
+            json tmp;
+            ::to_json(tmp, *opt);
+            j = tmp;
+        }
+
+        static void from_json(const json& j, std::optional<DbObject>& opt) {
+            if (j.is_null()) {
+                opt = std::nullopt;
+                return;
+            }
+
+            DbObject obj;
+            ::from_json(j, obj);
+            opt = obj;
+        }
+    };
+
+}
+
+
+NLOHMANN_JSON_SERIALIZE_ENUM(OnDelete, {
+    {OnDelete::RESTRICT, "RESTRICT"},
+    {OnDelete::CASCADE, "CASCADE"}
+})
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ForeignKeyDef,Column,RefTable,RefColumn,OnDeleteAction)
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(IndexDefinition,Name,Columns,IsUnique,IsPrimary)
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ColumnDefinition,Name,Type,Offset,Size,Nullable,IsUnique,Default)
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(TableDefinition,Name,RowSizeBytes,Columns,PrimaryKey,AutoIncrement,NextAutoValue,ForeignKeys,Indexes)
+/*
+the library literally copy-pasted a hidden to_json and from_json function into your code during the build step */
+
+TableRegistry::TableRegistry(StorageLayout& layout)
+    : _layout(layout)
+{
+    LoadAllSchemas();
+}
+
+void TableRegistry::LoadAllSchemas() {
+    if (!std::filesystem::exists(_layout.SchemaFolder())) return;
+
+    for (const auto& entry : std::filesystem::directory_iterator(_layout.SchemaFolder())) {
+        if (entry.path().extension() == ".json") {
+            std::ifstream file(entry.path());
+
+            nlohmann::json j;
+            file >> j;
+
+            TableDefinition schema = j.get<TableDefinition>();
+            _schemas[schema.Name] = std::move(schema);
+        }
+    }
+}
+
+void TableRegistry::SaveTable(const TableDefinition& definition) {
+    std::string path = _layout.SchemaFile(definition.Name);
+
+    nlohmann::json j = definition;
+
+    std::ofstream file(path);
+    file << j.dump(4); // 4 spaces for every indentation level
+
+    _schemas[definition.Name] = definition;
+}
+
+const TableDefinition& TableRegistry::CreateTable(
+    const std::string& tableName,
+    std::vector<ColumnDefinition> columns,
+    const std::vector<std::string>& primaryKey,
+    bool autoIncrement,
+    const std::vector<ForeignKeyDef>& foreignKeys)
+{
+    std::string unifiedName = Unify(tableName);
+    int currentOffset = 0;
+
+    std::vector<ColumnDefinition> processedColumns = columns;
+    for (auto& col : processedColumns) {
+        col.Offset = currentOffset;
+        col.Size = GetTypeSize(col.Type);
+        currentOffset += col.Size;
+    }
+
+    std::vector<IndexDefinition> indexes;
+    if (!primaryKey.empty()) {
+        indexes.push_back({
+            "pk_" + unifiedName,
+            primaryKey,
+            true,
+            true
+        });
+    }
+
+    for (const auto& col : processedColumns) {
+        bool inPk = std::find(primaryKey.begin(), primaryKey.end(), col.Name) != primaryKey.end();
+
+        if (col.IsUnique && !inPk) { // if the column is unique constrain we make for it an index
+            indexes.push_back({
+                "uq_" + unifiedName + "_" + col.Name,
+                {col.Name},
+                true,
+                false
+            });
+        }
+    }
+
+    TableDefinition schema;
+    schema.Name = unifiedName;
+    schema.Columns = std::move(processedColumns);
+    schema.PrimaryKey = primaryKey;
+    schema.AutoIncrement = autoIncrement;
+    schema.ForeignKeys = foreignKeys;
+    schema.Indexes = std::move(indexes);
+    schema.NextAutoValue = 1;
+    schema.RowSizeBytes = currentOffset + 10;
+
+    SaveTable(schema);
+    return _schemas[unifiedName];
+}
+
+const TableDefinition& TableRegistry::GetTable(const std::string& tableName) const {
+    std::string unified = Unify(tableName);
+
+    auto it = _schemas.find(unified);
+    if (it == _schemas.end()) {
+        throw std::runtime_error("Table '" + tableName + "' does not exist.");
+    }
+
+    return it->second;
+}
+
+std::vector<std::string> TableRegistry::GetAllTableNames() const {
+    std::vector<std::string> names;
+    names.reserve(_schemas.size());
+
+    for (const auto& [name,tableDef] : _schemas) {
+        names.push_back(name);
+    }
+    return names;
+}
+
+bool TableRegistry::TableExists(const std::string& name) const {
+    return _schemas.find(Unify(name)) != _schemas.end();
+}
+
+void TableRegistry::DropTable(const std::string& name) {
+    _schemas.erase(Unify(name));
+}
+
+int TableRegistry::GetTypeSize(const std::string& type) const {
+    std::string t = Unify(type);
+    if (t == "int") return 4;
+    if (t == "float") return 8;
+    if (t == "bool") return 1;
+    if (t == "str") return 104;
+
+    throw std::invalid_argument("Unsupported type: " + type);
+}
+
+std::string TableRegistry::Unify(const std::string& s) const {
+    std::string result = s;
+    for (auto &c : result) c=tolower(c);
+    return result;
+}
+
+
+// === ./Table/RowSerializer.cpp ===
+//
+// Created by omarabdo on 6/9/26.
+//
+
+#include "../../include/AkatsukiDB/Table/RowSerializer.hpp"
+#include <cstring>
+
+std::vector<uint8_t> RowSerializer::Serialize(const DbRow& row, const std::vector<ColumnDefinition>& columns, int rowSizeBytes) {
+
+
+    std::vector<uint8_t> buffer(rowSizeBytes, 0);
+
+    for (const auto& col : columns) {
+
+        std::span<uint8_t> slice = std::span<uint8_t>(buffer).subspan(col.Offset, col.Size);
+
+        auto it = row.find(col.Name);
+
+        if (it == row.end())
+            continue;
+
+        const DbObject& value = it->second;
+
+        if (col.Type == "int") {
+            if (std::holds_alternative<int>(value)) {
+                WriteInt(slice, std::get<int>(value));
+            }
+        }
+        else if (col.Type == "float") {
+            if (std::holds_alternative<double>(value)) {
+                WriteDouble(slice, std::get<double>(value));
+            }
+        }
+        else if (col.Type == "bool") {
+            if (std::holds_alternative<bool>(value)) {
+                slice[0] = std::get<bool>(value) ? 1 : 0;
+            }
+        }
+        else if (col.Type == "str") {
+            if (std::holds_alternative<std::string>(value)) {
+                WriteString(slice, std::get<std::string>(value));
+            }
+        }
+    }
+    return buffer;
+}
+
+DbRow RowSerializer::Deserialize(std::span<const uint8_t> data, const std::vector<ColumnDefinition>& columns) {
+    DbRow row;
+
+    for (const auto& col : columns) {
+        std::span<const uint8_t> slice = data.subspan(col.Offset, col.Size);
+
+        if (col.Type == "int") {
+            row[col.Name] = ReadInt(slice);
+        }
+        else if (col.Type == "float") {
+            row[col.Name] = ReadDouble(slice);
+        }
+        else if (col.Type == "bool") {
+            row[col.Name] = static_cast<bool>(slice[0] == 1);
+        }
+        else if (col.Type == "str") {
+            row[col.Name] = ReadString(slice);
+        }
+    }
+    return row;
+}
+
+void RowSerializer::WriteDouble(std::span<uint8_t> s, double v) {
+    std::memcpy(s.data(), &v, sizeof(double));
+}
+
+double RowSerializer::ReadDouble(std::span<const uint8_t> s) {
+    double v;
+    std::memcpy(&v, s.data(), sizeof(double));
+    return v;
+}
+
+void RowSerializer::WriteInt(std::span<uint8_t> s, int v) {
+    std::memcpy(s.data(), &v, sizeof(int));
+}
+
+int RowSerializer::ReadInt(std::span<const uint8_t> s) {
+    int v;
+    std::memcpy(&v, s.data(), sizeof(int));
+    return v;
+}
+
+void RowSerializer::WriteString(std::span<uint8_t> s, const std::string& v) {
+    int len = static_cast<int>(v.length()); // Write the 4-byte length prefix
+    WriteInt(s.subspan(0, 4), len);
+    std::memcpy(s.data() + 4, v.data(), len);
+    // to it now (len)(string)  (4 o m a r)
+}
+
+std::string RowSerializer::ReadString(std::span<const uint8_t> s) {
+    int len = ReadInt(s.subspan(0, 4));
+
+    auto textStart = s.begin() + 4;
+    auto textEnd = textStart + len;
+
+    return std::string(textStart, textEnd);
+}
+
+bool RowSerializer::IsDeleted(std::span<const uint8_t> data, int rowSizeBytes) {
+    return data[rowSizeBytes - 10] == 1;
+}
+
+void RowSerializer::MarkDeleted(std::span<uint8_t> data, int rowSizeBytes) {
+    data[rowSizeBytes - 10] = 1;
+}
+
+// === ./AQL/Executor/ExecuteInsert.cpp ===
+#include <cstdint>
+#include <unordered_set>
+#include <vector>
+
+#include "AkatsukiDB/AQL/Executor.hpp"
+#include "AkatsukiDB/Engine/QueryResult.hpp"
+#include "AkatsukiDB/Table/RowSerializer.hpp"
+
+QueryResult Executor::ExecuteInsert(InsertStatement& stmt) {
+    std::string tableName = stmt.TableName;
+    std::transform(tableName.begin(), tableName.end(), tableName.begin(), ::tolower);
+    if (!_registry.TableExists(tableName))
+        return QueryResult::Error("Table Name " + stmt.TableName + " does not exist");
+
+    const auto& def = _registry.GetTable(tableName);
+    auto tmIt = _tables.find(tableName);
+    if (tmIt == _tables.end())
+        return QueryResult::Error("Table manager not loaded for " + tableName);
+    auto& tm = *tmIt->second;
+
+    // Set of column names (lowercase)
+    std::unordered_set<std::string> colNames;
+    for (const auto& col : def.Columns) {
+        std::string lower = col.Name;
+        std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+        colNames.insert(lower);
+    }
+
+    int count = 0;
+    for (auto& rowDict : stmt.Rows) {
+        // Validate columns exist
+        for (const auto& [k, v] : rowDict) {
+            std::string kLower = k;
+            std::transform(kLower.begin(), kLower.end(), kLower.begin(), ::tolower);
+            if (!colNames.count(kLower))
+                return QueryResult::Error("Column " + k + " Not Found");
+        }
+
+        // Apply defaults
+        for (const auto& col : def.Columns) {
+            if (col.Default && (!rowDict.count(col.Name) || std::holds_alternative<std::monostate>(rowDict[col.Name]))) {
+                rowDict[col.Name] = *col.Default;
+            }
+        }
+
+        // Auto-increment
+        TableDefinition& mutableDef = const_cast<TableDefinition&>(def);
+        if (mutableDef.AutoIncrement) {
+            const std::string& pk = mutableDef.PrimaryKey[0];
+            if (!rowDict.count(pk) || std::holds_alternative<std::monostate>(rowDict[pk])) {
+                rowDict[pk] = mutableDef.NextAutoValue;
+                mutableDef.NextAutoValue++;
+                _registry.SaveTable(mutableDef);
+            }
+        }
+
+        // NOT NULL
+        for (const auto& col : def.Columns) {
+            if (!col.Nullable) {
+                auto it = rowDict.find(col.Name);
+                if (it == rowDict.end() || std::holds_alternative<std::monostate>(it->second))
+                    return QueryResult::Error("NOT NULL violation: '" + col.Name + "' cannot be null.");
+            }
+        }
+
+        // Primary key uniqueness
+        auto pkKey = BuildKeyForTree(rowDict, def.PrimaryKey);
+        auto pkIndexIt = _indexes.find(tableName);
+        if (pkIndexIt == _indexes.end() || pkIndexIt->second.empty())
+            return QueryResult::Error("Primary key index not found");
+        auto& pkTree = *pkIndexIt->second[0].second;
+        auto pkRes = pkTree.PointQuery(pkKey);
+        if (!pkRes.empty())
+            return QueryResult::Error("PRIMARY KEY violation: key already exists.");
+
+        // Foreign key checks
+        for (const auto& fk : def.ForeignKeys) {
+            auto it = rowDict.find(fk.Column);
+            if (it == rowDict.end() || std::holds_alternative<std::monostate>(it->second))
+                continue;
+            const DbObject& val = it->second;
+            auto refIt = _indexes.find(fk.RefTable);
+            if (refIt == _indexes.end() || refIt->second.empty())
+                return QueryResult::Error("Referenced table '" + fk.RefTable + "' has no index.");
+            auto& refTree = *refIt->second[0].second;
+            // Build key from single value (assuming FK is single column)
+            std::vector<DbObject> keyVals = {val};
+            IndexKey fkKey((std::span<const DbObject>(keyVals)));
+            auto res = refTree.PointQuery(fkKey);
+            if (res.empty())
+                return QueryResult::Error("FOREIGN KEY violation: '" + fk.Column + "' = " + DbObjectToString(val) + " not found in " + fk.RefTable + ".");
+        }
+
+        // Check secondary unique indexes
+        const auto& idxList = _indexes[tableName];
+        for (size_t i = 0; i < def.Indexes.size(); ++i) {
+            const auto& idxDef = def.Indexes[i];
+            if (idxDef.IsUnique && !idxDef.IsPrimary) {
+                auto key = BuildKeyForTree(rowDict, idxDef.Columns);
+                auto& idxTree = *idxList[i].second;
+                auto res = idxTree.PointQuery(key);
+                if (!res.empty())
+                    return QueryResult::Error("UNIQUE violation on index '" + idxDef.Name + "'.");
+            }
+        }
+
+        // Write row to storage
+        std::vector<std::uint8_t> bytes = RowSerializer::Serialize(rowDict, def.Columns, def.RowSizeBytes);
+        auto [pageId, slotIndex] = tm.InsertRow(bytes);
+
+        // Update all indexes
+        for (size_t i = 0; i < def.Indexes.size(); ++i) {
+            auto& idxTree = *idxList[i].second;
+            auto key = BuildKeyForTree(rowDict, def.Indexes[i].Columns);
+            idxTree.Insert({key, pageId, static_cast<short>(slotIndex)});
+        }
+
+        ++count;
+    }
+    return QueryResult::Affected(count);
+}
+
+
+// === ./AQL/Executor/ExecuteExpression.cpp ===
+//
+// Created by omarabdo on 6/12/26.
+//
+
+#include "AkatsukiDB/AQL/Executor.hpp"
+#include "AkatsukiDB/Expressions/Expression.hpp"
+
+
+
+
+bool Executor::EvaluateBool(Expression& expr, const std::unordered_map<std::string, DbObject>& row) {
+    if (auto* bin = dynamic_cast<BinaryExpr*>(&expr)) {
+        if (bin->Op == "and")
+            return EvaluateBool(*bin->Left, row) && EvaluateBool(*bin->Right, row);
+        if (bin->Op == "or")
+            return EvaluateBool(*bin->Left, row) || EvaluateBool(*bin->Right, row);
+        // Comparison
+        auto left = GetValue(*bin->Left, row);
+        auto right = GetValue(*bin->Right, row);
+        return Compare(left, bin->Op, right);
+    }
+    if (auto* unary = dynamic_cast<UnaryExpr*>(&expr)) {
+        if (unary->Op == "not")
+            return !EvaluateBool(*unary->Operand, row);
+    }
+    if (auto* isNull = dynamic_cast<IsNullExpr*>(&expr)) {
+        auto val = GetValue(*isNull->Value, row);
+        bool isnull = std::holds_alternative<std::monostate>(val);
+        return isnull ? !isNull->Not : isNull->Not;
+    }
+    if (auto* between = dynamic_cast<BetweenExpr*>(&expr)) {
+        auto v = GetValue(*between->Value, row);
+        auto lo = GetValue(*between->Lower, row);
+        auto hi = GetValue(*between->Upper, row);
+        return Compare(v, ">=", lo) && Compare(v, "<=", hi);
+    }
+    if (auto* in = dynamic_cast<InExpr*>(&expr)) {
+        auto v = GetValue(*in->Value, row);
+        for (auto& valExpr : in->Values) {
+            if (AreEqual(v, GetValue(*valExpr, row)))
+                return true;
+        }
+        return false;
+    }
+    if (auto* like = dynamic_cast<LikeExpr*>(&expr)) {
+        auto v = GetValue(*like->Value, row);
+        auto pat = GetValue(*like->Pattern, row);
+        std::string s = DbObjectToString(v);
+        std::string p = DbObjectToString(pat);
+        return LikeMatch(s, p);
+    }
+    // Literal? Evaluate a literal as bool?
+    if (auto* lit = dynamic_cast<Literal*>(&expr)) {
+        const auto& val = lit->Value;
+        if (std::holds_alternative<bool>(val)) return std::get<bool>(val);
+        if (std::holds_alternative<int>(val)) return std::get<int>(val) != 0;
+        if (std::holds_alternative<double>(val)) return std::get<double>(val) != 0.0;
+        if (std::holds_alternative<std::string>(val)) return !std::get<std::string>(val).empty();
+        return false;
+    }
+    // ColumnRef: treat as boolean? Not typical, but for simplicity return true if not null.
+    if (auto* cr = dynamic_cast<ColumnRef*>(&expr)) {
+        auto val = GetValue(expr, row);
+        return !std::holds_alternative<std::monostate>(val);
+    }
+    return false;
+}
+
+// ----------------------------------------------------------------------------
+// Helper: Get value of an expression from a row
+// ----------------------------------------------------------------------------
+DbObject Executor::GetValue(Expression& expr, const std::unordered_map<std::string, DbObject>& row) {
+    if (auto* lit = dynamic_cast<Literal*>(&expr)) {
+        return lit->Value;
+    }
+    if (auto* cr = dynamic_cast<ColumnRef*>(&expr)) {
+        std::string fullName = cr->Column;
+        if (cr->TableName.has_value()) {
+            fullName = cr->TableName.value() + "." + cr->Column;
+            auto it = row.find(fullName);
+            if (it != row.end()) return it->second;
+        }
+        // Try unqualified
+        auto it = row.find(cr->Column);
+        if (it != row.end()) return it->second;
+        // Try table.column (if table is known from binding)
+        if (cr->TableName.has_value()) {
+            std::string withTable = cr->TableName.value() + "." + cr->Column;
+            it = row.find(withTable);
+            if (it != row.end()) return it->second;
+        }
+        return std::monostate{};
+    }
+    if (auto* bin = dynamic_cast<BinaryExpr*>(&expr)) {
+        if (bin->Op == "+" || bin->Op == "-" || bin->Op == "*" || bin->Op == "/") {
+            auto left = GetValue(*bin->Left, row);
+            auto right = GetValue(*bin->Right, row);
+            return Calculate(left, bin->Op, right);
+        }
+        // For boolean operators, we don't return a value (they are used in EvaluateBool)
+        return std::monostate{};
+    }
+    if (auto* unary = dynamic_cast<UnaryExpr*>(&expr)) {
+        // Not supported for value extraction
+        return std::monostate{};
+    }
+    if (auto* fn = dynamic_cast<FunctionExpr*>(&expr)) {
+        // Not implemented
+        return std::monostate{};
+    }
+    return std::monostate{};
+}
+
+// ----------------------------------------------------------------------------
+// Helper: Compare two DbObject values with given operator
+// ----------------------------------------------------------------------------
+bool Executor::Compare(const DbObject& left, const std::string& op, const DbObject& right) {
+    // Null handling
+    if (std::holds_alternative<std::monostate>(left) && std::holds_alternative<std::monostate>(right))
+        return op == "=";
+    if (std::holds_alternative<std::monostate>(left) || std::holds_alternative<std::monostate>(right))
+        return op == "!=";
+
+    int cmp = CompareAny(left, right);
+    if (op == "=") return cmp == 0;
+    if (op == "!=") return cmp != 0;
+    if (op == ">") return cmp == 1;
+    if (op == "<") return cmp == -1;
+    if (op == ">=") return cmp >= 0;
+    if (op == "<=") return cmp <= 0;
+    return false;
+}
+
+bool Executor::AreEqual(const DbObject& a, const DbObject& b) {
+    return Compare(a, "=", b);
+}
+
+// ----------------------------------------------------------------------------
+// Helper: CompareAny returns -1, 0, 1
+// ----------------------------------------------------------------------------
+int Executor::CompareAny(const DbObject& a, const DbObject& b) {
+    // Try numeric conversion
+    double da, db;
+    bool aNumeric = TryDouble(a, da);
+    bool bNumeric = TryDouble(b, db);
+    if (aNumeric && bNumeric) {
+        if (da < db) return -1;
+        if (da > db) return 1;
+        return 0;
+    }
+    // Fallback to string comparison
+    std::string sa = DbObjectToString(a);
+    std::string sb = DbObjectToString(b);
+    int len = std::min(sa.size(), sb.size());
+    for (int i = 0; i < len; ++i) {
+        if (sa[i] < sb[i]) return -1;
+        if (sa[i] > sb[i]) return 1;
+    }
+    if (sa.size() < sb.size()) return -1;
+    if (sa.size() > sb.size()) return 1;
+    return 0;
+}
+
+// ----------------------------------------------------------------------------
+// Helper: Try to convert DbObject to double
+// ----------------------------------------------------------------------------
+bool Executor::TryDouble(const DbObject& v, double& result) {
+    if (std::holds_alternative<int>(v)) {
+        result = static_cast<double>(std::get<int>(v));
+        return true;
+    }
+    if (std::holds_alternative<double>(v)) {
+        result = std::get<double>(v);
+        return true;
+    }
+    if (std::holds_alternative<bool>(v)) {
+        result = std::get<bool>(v) ? 1.0 : 0.0;
+        return true;
+    }
+    if (std::holds_alternative<std::string>(v)) {
+        try {
+            result = std::stod(std::get<std::string>(v));
+            return true;
+        } catch (...) {
+            return false;
+        }
+    }
+    return false;
+}
+
+// ----------------------------------------------------------------------------
+// Helper: Calculate arithmetic
+// ----------------------------------------------------------------------------
+DbObject Executor::Calculate(const DbObject& a, const std::string& op, const DbObject& b) {
+    double da,db;
+    if (!TryDouble(a,  da) || !TryDouble(b,  db))
+        return std::monostate{};
+    double res;
+    if (op == "*") res = da * db;
+    else if (op == "+") res = da + db;
+    else if (op == "-") res = da - db;
+    else if (op == "/") {
+        if (db == 0.0) throw std::runtime_error("Division by zero");
+        res = da / db;
+    }
+    else return std::monostate{};
+    // Preserve integer type if both operands were ints
+    if (std::holds_alternative<int>(a) && std::holds_alternative<int>(b)) {
+        // Check if result fits in int
+        if (res == static_cast<double>(static_cast<int>(res)))
+            return static_cast<int>(res);
+    }
+    return res;
+}
+
+// ----------------------------------------------------------------------------
+// Like pattern matching (recursive with memoization)
+// ----------------------------------------------------------------------------
+bool Executor::LikeMatch(const std::string& s, const std::string& pattern) {
+    std::unordered_map<std::string, bool> dp;
+    return RecLike(0, 0, s, pattern, dp);
+}
+
+bool Executor::RecLike(int i, int j, const std::string& s, const std::string& pattern,
+                       std::unordered_map<std::string, bool>& dp) {
+    std::string key = std::to_string(i) + "," + std::to_string(j);
+    if (dp.find(key) != dp.end()) return dp[key];
+    if (i == (int)s.size()) {
+        // End of string: pattern must be consumed or only % left
+        while (j < (int)pattern.size() && pattern[j] == '%') ++j;
+        return dp[key] = (j == (int)pattern.size());
+    }
+    if (j == (int)pattern.size()) return dp[key] = false;
+
+    if (pattern[j] == '%') {
+        for (int k = i; k <= (int)s.size(); ++k) {
+            if (RecLike(k, j+1, s, pattern, dp))
+                return dp[key] = true;
+        }
+        return dp[key] = false;
+    }
+    if (pattern[j] == '?' || pattern[j] == s[i]) {
+        return dp[key] = RecLike(i+1, j+1, s, pattern, dp);
+    }
+    return dp[key] = false;
+}
+
+// === ./AQL/Executor/ExecuteCreate.cpp ===
+//
+// Created by omarabdo on 6/12/26.
+//
+
+#include <unordered_set>
+
+#include "AkatsukiDB/AQL/Executor.hpp"
+#include "AkatsukiDB/Engine/QueryResult.hpp"
+
+QueryResult Executor::ExecuteCreateTable(CreateTableStatement& stmt) {
+    std::string tableName = stmt.TableName;
+    std::transform(tableName.begin(), tableName.end(), tableName.begin(), ::tolower);
+    if (_registry.TableExists(tableName))
+        return QueryResult::Error("Table Name " + stmt.TableName + " already exists");
+
+    if (stmt.AutoIncrement) {
+        if (stmt.PrimaryKey.size() != 1)
+            return QueryResult::Error("AUTO can only be used with a single-column PRIMARY KEY.");
+        const std::string& pkCol = stmt.PrimaryKey[0];
+        const ColumnDefinition* pkDef = nullptr;
+        for (const auto& col : stmt.Columns) {
+            if (col.Name == pkCol) {
+                pkDef = &col;
+                break;
+            }
+        }
+        if (!pkDef || pkDef->Type != "int")
+            return QueryResult::Error("AUTO PRIMARY KEY must be an int column.");
+    }
+
+    // Check foreign keys
+    for (const auto& fk : stmt.ForeignKeys) {
+        std::string refTable = fk.RefTable;
+        std::transform(refTable.begin(), refTable.end(), refTable.begin(), ::tolower);
+        if (!_registry.TableExists(refTable))
+            return QueryResult::Error("FK reference Table " + fk.RefTable + " not found");
+        const auto& fkDef = _registry.GetTable(refTable);
+        bool colFound = false;
+        for (const auto& col : fkDef.Columns) {
+            if (col.Name == fk.RefColumn) {
+                colFound = true;
+                break;
+            }
+        }
+        if (!colFound)
+            return QueryResult::Error("FK Column Name " + fk.RefColumn + " not found in " + fk.RefTable);
+        bool isPK = false;
+        for (const auto& pk : fkDef.PrimaryKey) {
+            if (pk == fk.RefColumn) {
+                isPK = true;
+                break;
+            }
+        }
+        if (!isPK)
+            return QueryResult::Error("FK reference " + fk.RefColumn + "." + fk.RefTable + " is not PRIMARY KEY");
+    }
+
+    // Create the table definition (writes JSON schema)
+    auto def = _registry.CreateTable(stmt.TableName, stmt.Columns, stmt.PrimaryKey,
+                                     stmt.AutoIncrement, stmt.ForeignKeys);
+    OpenTable(def.Name);  // creates .tbl file and loads indexes (none initially)
+    return QueryResult::Affected(0, "Table '" + def.Name + "' created.");
+}
+
+QueryResult Executor::ExecuteCreateIndex(CreateIndexStatement& stmt) {
+    std::string tableName = stmt.TableName;
+    std::transform(tableName.begin(), tableName.end(), tableName.begin(), ::tolower);
+    std::string indexName = stmt.IndexName;
+    std::transform(indexName.begin(), indexName.end(), indexName.begin(), ::tolower);
+
+    if (!_registry.TableExists(tableName))
+        return QueryResult::Error("Table Name " + stmt.TableName + " not found");
+
+    const auto& def = _registry.GetTable(tableName);
+    std::unordered_set<std::string> colNames;
+    for (const auto& col : def.Columns) {
+        std::string lower = col.Name;
+        std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+        colNames.insert(lower);
+    }
+    for (const auto& col : stmt.Columns) {
+        std::string lower = col;
+        std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+        if (!colNames.count(lower))
+            return QueryResult::Error("Column " + col + " Not Found");
+    }
+
+    auto& tm = *_tables[tableName];
+
+    // Check if index already exists
+    auto it = _indexes.find(tableName);
+    if (it != _indexes.end()) {
+        for (const auto& [idxDef, _] : it->second) {
+            if (idxDef.Name == indexName)
+                return QueryResult::Error("Index " + indexName + " already exists");
+        }
+    }
+
+    IndexDefinition idxDef;
+    idxDef.Name = indexName;
+    idxDef.Columns = stmt.Columns;
+    idxDef.IsPrimary = false;
+    idxDef.IsUnique = stmt.IsUnique;
+
+    std::string idxPath = _layout.IndexFile(indexName);
+    auto tree = std::make_unique<BPlusTree>(idxPath);
+
+    // Populate index from existing rows
+    auto entries = tm.FullScan();
+    for (const auto& entry : entries) {
+        auto row = RowSerializer::Deserialize(entry.Bytes, def.Columns);
+        auto key = BuildKeyForTree(row, stmt.Columns);
+        if (stmt.IsUnique) {
+            auto res = tree->PointQuery(key);
+            if (!res.empty()) {
+                tree.reset(); // destructor will close/delete?
+                if (std::filesystem::exists(idxPath)) std::filesystem::remove(idxPath);
+                return QueryResult::Error("Cannot Create UNIQUE Index - duplicate values exist in " + stmt.Columns[0]);
+            }
+        }
+        tree->Insert({key, entry.PageId, static_cast<short>(entry.SlotIndex)});
+    }
+
+    // Save index definition to table schema
+    const_cast<TableDefinition&>(def).Indexes.push_back(idxDef);
+    _registry.SaveTable(def);
+
+    // Add to in-memory map
+    _indexes[tableName].emplace_back(idxDef, std::move(tree));
+
+    return QueryResult::Affected(0, "Index " + indexName + " created on " + tableName + ".");
+}
+
+// === ./AQL/Executor/Executor.cpp ===
+//
+// Created by omarabdo on 6/11/26.
+//
+
+#include "AkatsukiDB/AQL/Executor.hpp"
+
+#include "AkatsukiDB/Storage/StorageLayout.hpp"
+
+Executor::Executor(TableRegistry& registry,
+                   StorageLayout& layout,
+                   TableManagerMap& tables,
+                   IndexMap& indexes,
+                   ReferencedByMap& referencedBy)
+    : _registry(registry)
+    , _layout(layout)
+    , _tables(tables)
+    , _indexes(indexes)
+    , _referencedBy(referencedBy)
+    , _validator(registry)
+{}
+
+QueryResult Executor::Execute(IStatement& stmt) {
+    try {
+        // Using dynamic_cast to determine statement type virtual table / vptr
+        if (auto* s = dynamic_cast<SelectStatement*>(&stmt))
+            return ExecuteSelect(*s);
+        if (auto* s = dynamic_cast<InsertStatement*>(&stmt))
+            return ExecuteInsert(*s);
+        if (auto* s = dynamic_cast<UpdateStatement*>(&stmt))
+            return ExecuteUpdate(*s);
+        if (auto* s = dynamic_cast<DeleteStatement*>(&stmt))
+            return ExecuteDelete(*s);
+        if (auto* s = dynamic_cast<CreateTableStatement*>(&stmt))
+            return ExecuteCreateTable(*s);
+        if (auto* s = dynamic_cast<CreateIndexStatement*>(&stmt))
+            return ExecuteCreateIndex(*s);
+        if (auto* s = dynamic_cast<DropTableStatement*>(&stmt))
+            return ExecuteDropTable(*s);
+        if (auto* s = dynamic_cast<TruncateStatement*>(&stmt))
+            return ExecuteTruncate(*s);
+        if (auto* s = dynamic_cast<ShowStatement*>(&stmt))
+            return ExecuteShow(*s);
+        return QueryResult::Error("Statement not supported yet.");
+    } catch (const std::exception& ex) {
+        return QueryResult::Error(ex.what());
+    }
+}
+// Open a table (create .tbl file and load indexes)
+void Executor::OpenTable(const std::string& name) {
+    std::string lowerName = name;
+    std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), ::tolower);
+    const auto& def = _registry.GetTable(lowerName);
+    auto pm = std::make_unique<PageManager>(_layout.TableFile(lowerName));
+    auto bp = std::make_unique<BufferPool>(_layout.TableFile(lowerName));
+    _tables[lowerName] = std::make_unique<TableManager>(std::move(bp), def.RowSizeBytes);
+
+    _indexes[lowerName] = std::vector<std::pair<IndexDefinition, std::unique_ptr<BPlusTree>>>();
+    for (const auto& idxDef : def.Indexes) {
+        std::string idxPath = _layout.IndexFile(idxDef.Name);
+        auto tree = std::make_unique<BPlusTree>(idxPath);
+        _indexes[lowerName].emplace_back(idxDef, std::move(tree));
+    }
+}
+
+
+// Helper: Build IndexKey from row dictionary and column list
+IndexKey Executor::BuildKeyForTree(const std::unordered_map<std::string, DbObject>& row,
+                                   const std::vector<std::string>& columns) {
+    std::vector<DbObject> values;
+    values.reserve(columns.size());
+    for (const auto& col : columns) {
+        auto it = row.find(col);
+        values.push_back(it != row.end() ? it->second : DbObject{});
+    }
+    return IndexKey(std::span<const DbObject>(values));
+}
+
+
+// Executor for SHOW statements
+QueryResult Executor::ExecuteShow(ShowStatement& stmt) {
+    std::string what = stmt.What;
+    std::transform(what.begin(), what.end(), what.begin(), ::tolower);
+    if (what == "tables")
+        return ShowTables();
+    if (what == "schema")
+        return ShowSchema(stmt.Target.value_or(""));
+    if (what == "indexes")
+        return ShowIndexes(stmt.Target.value_or(""));
+    return QueryResult::Error("Unknown SHOW target: " + stmt.What);
+}
+
+QueryResult Executor::ShowTables() {
+    auto names = _registry.GetAllTableNames();
+    std::vector<std::unordered_map<std::string, DbObject>> rows;
+    rows.reserve(names.size());
+    for (const auto& n : names) {
+        rows.push_back({{"table_name", n}});
+    }
+    return QueryResult::Success({"table_name"}, std::move(rows));
+}
+
+QueryResult Executor::ShowSchema(const std::string& tableName) {
+    std::string lower = tableName;
+    std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+    if (!_registry.TableExists(lower))
+        return QueryResult::Error("Table '" + tableName + "' not found.");
+    const auto& def = _registry.GetTable(lower);
+    std::vector<std::unordered_map<std::string, DbObject>> rows;
+    rows.reserve(def.Columns.size());
+    for (const auto& col : def.Columns) {
+        rows.push_back({
+            {"column", col.Name},
+            {"type", col.Type},
+            {"nullable", col.Nullable},
+            {"default", col.Default ? DbObjectToString(*col.Default) : "none"}
+        });
+    }
+    return QueryResult::Success({"column", "type", "nullable", "default"}, std::move(rows));
+}
+
+QueryResult Executor::ShowIndexes(const std::string& tableName) {
+    std::string lower = tableName;
+    std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+    if (!_registry.TableExists(lower))
+        return QueryResult::Error("Table '" + tableName + "' not found.");
+    const auto& def = _registry.GetTable(lower);
+    std::vector<std::unordered_map<std::string, DbObject>> rows;
+    rows.reserve(def.Indexes.size());
+    for (const auto& idx : def.Indexes) {
+        std::string colsStr;
+        for (size_t i = 0; i < idx.Columns.size(); ++i) {
+            if (i > 0) colsStr += ",";
+            colsStr += idx.Columns[i];
+        }
+        rows.push_back({
+            {"name", idx.Name},
+            {"columns", colsStr},
+            {"IsPrimary", idx.IsPrimary},
+            {"IsUnique", idx.IsUnique}
+        });
+    }
+    return QueryResult::Success({"name", "columns", "IsPrimary", "IsUnique"}, std::move(rows));
+}
+
+
+// === ./AQL/Executor/ExecuteDrop.cpp ===
+//
+// Created by omarabdo on 6/12/26.
+//
+
+#include "AkatsukiDB/AQL/Executor.hpp"
+#include "AkatsukiDB/Engine/QueryResult.hpp"
+
+QueryResult Executor::ExecuteDropTable(DropTableStatement& stmt) {
+    std::string name = stmt.TableName;
+    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+    if (!_registry.TableExists(name))
+        return QueryResult::Error("Table Name " + name + " not found");
+
+    // Close table manager and remove from maps
+    auto tblIt = _tables.find(name);
+    if (tblIt != _tables.end()) {
+        tblIt->second.reset();  // destructor flushes and closes
+        _tables.erase(tblIt);
+    }
+
+    auto idxIt = _indexes.find(name);
+    if (idxIt != _indexes.end()) {
+        for (auto& [def, tree] : idxIt->second) {
+            std::string idxPath = _layout.IndexFile(def.Name);
+            if (std::filesystem::exists(idxPath)) std::filesystem::remove(idxPath);
+            tree.reset();  // BPlusTree destructor closes files
+        }
+        _indexes.erase(idxIt);
+    }
+
+    // Delete physical files
+    std::string tblPath = _layout.TableFile(name);
+    std::string schPath = _layout.SchemaFile(name);
+    if (std::filesystem::exists(tblPath)) std::filesystem::remove(tblPath);
+    if (std::filesystem::exists(schPath)) std::filesystem::remove(schPath);
+
+    _registry.DropTable(name);
+    return QueryResult::Affected(0, "Table " + name + " dropped.");
+}
+
+// Execute TRUNCATE TABLE
+QueryResult Executor::ExecuteTruncate(TruncateStatement& stmt) {
+    std::string name = stmt.TableName;
+    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+    if (!_registry.TableExists(name))
+        return QueryResult::Error("Table Name " + name + " not found");
+
+    auto def = _registry.GetTable(name);  // non-const copy? Actually GetTable returns const reference, but we need to modify NextAutoValue
+    // We need a mutable reference; we'll use const_cast carefully.
+    TableDefinition& mutableDef = const_cast<TableDefinition&>(def);
+
+    // Close table and indexes
+    auto tblIt = _tables.find(name);
+    if (tblIt != _tables.end()) {
+        tblIt->second.reset();
+        _tables.erase(tblIt);
+    }
+
+    auto idxIt = _indexes.find(name);
+    if (idxIt != _indexes.end()) {
+        for (auto& [idxDef, tree] : idxIt->second) {
+            std::string idxPath = _layout.IndexFile(idxDef.Name);
+            if (std::filesystem::exists(idxPath)) std::filesystem::remove(idxPath);
+            tree.reset();
+        }
+        _indexes.erase(idxIt);
+    }
+
+    // Delete .tbl file
+    std::string tblPath = _layout.TableFile(name);
+    if (std::filesystem::exists(tblPath)) std::filesystem::remove(tblPath);
+    // Keep the .schema.json file
+
+    // Reopen the table (creates fresh .tbl and indexes from schema)
+    OpenTable(name);
+
+    // Reset auto-increment counter
+    mutableDef.NextAutoValue = 1;
+    _registry.SaveTable(mutableDef);
+
+    return QueryResult::Affected(0, "Table " + name + " truncated.");
+}
+
+// === ./AQL/Executor/ExecuteDelete.cpp ===
+//
+// Created by omarabdo on 6/12/26.
+//
+
+#include "AkatsukiDB/AQL/Executor.hpp"
+
+QueryResult Executor::ExecuteDelete(DeleteStatement &stmt) {
+
+}
+
+// === ./AQL/Executor/ExecuteUpdate.cpp ===
+//
+// Created by omarabdo on 6/12/26.
+//
+
+
+#include "AkatsukiDB/AQL/Executor.hpp"
+
+QueryResult Executor::ExecuteUpdate(UpdateStatement &stmt) {
+
+}
+
+
+// === ./AQL/Executor/ExecuteSelect.cpp ===
+//
+// Created by omarabdo on 6/12/26.
+//
+
+#include "AkatsukiDB/AQL/Executor.hpp"
+
+QueryResult Executor::ExecuteSelect(SelectStatement &stmt) {
+
+}
+
+
+// === ./AQL/Parser.cpp ===
+//
+// Created by omarabdo on 6/11/26.
+//
+
+#include "../../include/AkatsukiDB/AQL/Parser.hpp"
+
+#include <algorithm>
+
+#include "AkatsukiDB/Statments/CreateIndexStatement.hpp"
+#include "AkatsukiDB/Statments/CreateTableStatement.hpp"
+#include "AkatsukiDB/Statments/DeleteStatement.hpp"
+#include "AkatsukiDB/Statments/DropTableStatement.hpp"
+#include "AkatsukiDB/Statments/InsertStatement.hpp"
+#include "AkatsukiDB/Statments/SelectStatement.hpp"
+#include "AkatsukiDB/Statments/ShowStatement.hpp"
+#include "AkatsukiDB/Statments/UpdateStatement.hpp"
+#include "AkatsukiDB/Table/TableDefinition.hpp"
+
+bool Parser::Match(const std::string& value) {
+    if (IsAtEnd()) return false;
+    std::string cur = Current().GetValue();
+    std::transform(cur.begin(), cur.end(), cur.begin(), ::tolower);
+    std::string lowerVal = value;
+    std::transform(lowerVal.begin(), lowerVal.end(), lowerVal.begin(), ::tolower);
+    if (cur != lowerVal) return false;
+    ++_pos;
+    return true;
+}
+
+void Parser::Expect(const std::string& value) {
+    if (IsAtEnd()) throw ParseException("Expected " + value + " but reached end");
+    std::string cur = Current().GetValue();
+    std::transform(cur.begin(), cur.end(), cur.begin(), ::tolower);
+    std::string lowerVal = value;
+    std::transform(lowerVal.begin(), lowerVal.end(), lowerVal.begin(), ::tolower);
+    if (cur != lowerVal) {
+        throw ParseException("Expected " + value + " but got " + cur + " at line " + std::to_string(Current().GetLine()));
+    }
+    ++_pos;
+}
+
+Token Parser::Expect(TokenType type) {
+    if (IsAtEnd()) throw ParseException("Expected token type but reached end");
+    if (Current().GetType() != type) {
+        throw ParseException("Expected " + std::to_string(static_cast<int>(type)) + " but got " +
+                             Current().ToString() + " at line " + std::to_string(Current().GetLine()));
+    }
+    return _tokens[_pos++];
+}
+
+std::string Parser::ExpectName() {
+    if (IsAtEnd()) throw ParseException("Expected name (identifier or keyword) at end");
+    if (Current().GetType() != TokenType::Identifier && Current().GetType() != TokenType::Keyword) {
+        throw ParseException("Expected name but got " + Current().ToString());
+    }
+    std::string val = Current().GetValue();
+    std::transform(val.begin(), val.end(), val.begin(), ::tolower);
+    ++_pos;
+    return val;
+}
+
+std::unique_ptr<IStatement> Parser::Parse(const std::vector<Token>& tokens) {
+    _tokens = tokens;
+    _pos = 0;
+    if (IsAtEnd()) throw ParseException("Empty input");
+
+    std::string first = Current().GetValue();
+    std::transform(first.begin(), first.end(), first.begin(), ::tolower);
+
+    if (first == "select") return ParseSelect();
+    if (first == "insert") return ParseInsert();
+    if (first == "update") return ParseUpdate();
+    if (first == "delete") return ParseDelete();
+    if (first == "create") return ParseCreate();
+    if (first == "drop") return ParseDrop();
+    if (first == "truncate") return ParseTruncate();
+    if (first == "show") return ParseShow();
+    throw ParseException("Unknown statement '" + Current().GetValue() + "' at line " + std::to_string(Current().GetLine()));
+//todo commit , rollback , begin
+}
+
+// Create statements
+std::unique_ptr<IStatement> Parser::ParseCreate() {
+    Expect("create");
+    if (Match("table")) return ParseCreateTable();
+    bool unique = Match("unique");
+    if (Match("index")) return ParseCreateIndex(unique);
+    throw ParseException("Expected TABLE or INDEX after CREATE");
+}
+
+/*
+     CREATE (unique) INDEX idx_name_city
+       ON Customers (LastName, City);  sql
+     */
+
+std::unique_ptr<IStatement> Parser::ParseCreateIndex(bool unique) {
+    std::string name = ExpectName();
+    Expect("on");
+    std::string table = ExpectName();
+    Expect("(");
+    std::vector<std::string> cols;
+    do {
+        cols.push_back(ExpectName());
+    } while (Match(","));
+    Expect(")");
+
+    auto stmt = std::make_unique<CreateIndexStatement>();
+    stmt->IndexName = name;
+    stmt->TableName = table;
+    stmt->Columns = cols;
+    stmt->IsUnique = unique;
+    return stmt;
+}
+
+/*
+    AQL
+
+    CREATE TABLE employees {
+          int    id        PK AUTO,
+          int    dept_id   FK departments.id CASCADE,
+          str    name      NOT NULL,
+          float  salary    DEFAULT 0.0,
+          bool   is_active DEFAULT true
+      }
+
+    */
+
+std::unique_ptr<IStatement> Parser::ParseCreateTable() {
+    std::string name = ExpectName();
+    auto stmt = std::make_unique<CreateTableStatement>();
+    stmt->TableName = name;
+    Expect("{");
+
+    do {
+        ColumnDefinition col;
+        col.Type = ExpectName();
+        col.Name = ExpectName();
+
+        while (!IsAtEnd() && Current().GetValue() != "," && Current().GetValue() != "}") {
+            std::string kw = Current().GetValue();
+            std::transform(kw.begin(), kw.end(), kw.begin(), ::tolower);
+
+            if (kw == "pk") {
+                ++_pos;
+                stmt->PrimaryKey.push_back(col.Name);
+                col.Nullable = false;
+                col.IsUnique=true;
+            } else if (kw == "auto") {
+                ++_pos;
+                stmt->AutoIncrement = true;
+            } else if (kw == "not") {
+                ++_pos;
+                Expect("null");
+                col.Nullable = false;
+            } else if (kw == "default") {
+                ++_pos;
+                col.Default = ParseLiteralValue();
+            } else if (kw == "unique") {
+                ++_pos;
+                col.IsUnique = true;
+            } else if (kw == "fk") {
+                ++_pos;
+                std::string refTable = ExpectName();
+                Expect(".");
+                std::string refColumn = ExpectName();
+                OnDelete onDelete = Match("cascade") ? OnDelete::CASCADE : OnDelete::RESTRICT;
+                ForeignKeyDef fk;
+                fk.Column = col.Name;
+                fk.RefColumn = refColumn;
+                fk.RefTable = refTable;
+                fk.OnDeleteAction = onDelete;
+                stmt->ForeignKeys.push_back(fk);
+            } else {
+                break;
+            }
+        }
+        stmt->Columns.push_back(col);
+    } while (Match(","));
+
+    Expect("}");
+    return stmt;
+}
+
+// Delete
+std::unique_ptr<IStatement> Parser::ParseDelete() {
+    Expect("delete");
+    Expect("from");
+    std::string table = ExpectName();
+    auto stmt = std::make_unique<DeleteStatement>();
+    stmt->TableName = table;
+    if (Match("where")) {
+        stmt->Where = ParseExpression();
+    }
+    return stmt;
+}
+
+// Drop & Truncate
+std::unique_ptr<IStatement> Parser::ParseDrop() {
+    Expect("drop");
+    if (Match("table")) {
+        auto stmt = std::make_unique<DropTableStatement>();
+        stmt->TableName = ExpectName();
+        return stmt;
+    }
+    if (Match("index")) {
+        auto stmt = std::make_unique<DropIndexStatement>();
+        stmt->IndexName = ExpectName();
+        return stmt;
+    }
+    throw ParseException("Expected TABLE or INDEX after DROP");
+}
+
+std::unique_ptr<IStatement> Parser::ParseTruncate() {
+    Expect("truncate");
+    Match("table"); // optional
+    auto stmt = std::make_unique<TruncateStatement>();
+    stmt->TableName = ExpectName();
+    return stmt;
+}
+
+// Insert
+std::unique_ptr<IStatement> Parser::ParseInsert() {
+    Expect("insert");
+    Expect("into");
+    auto stmt = std::make_unique<InsertStatement>();
+    stmt->TableName = ExpectName();
+    stmt->Rows = ParseInsertRows();
+    return stmt;
+}
+/*
+     insert into emp [{name:omar,sal:1000},{name:ali,sal:1000}]
+     */
+std::vector<DbRow> Parser::ParseInsertRows() {
+    std::vector<DbRow> rows;
+    if (Current().GetType() == TokenType::LBrace) { // {
+        rows.push_back(ParseRow());
+    } else if (Current().GetType() == TokenType::LBracket) { // [
+        ++_pos;
+        do {
+            rows.push_back(ParseRow());
+        } while (Match(","));
+        Expect("]");
+    }
+    return rows;
+}
+
+std::unordered_map<std::string, DbObject> Parser::ParseRow() {
+    DbRow row;
+    Expect("{");
+    do {
+        std::string column = ExpectName();
+        Expect(":");
+        row[column] = ParseLiteralValue();
+    } while (Match(","));
+    Expect("}");
+    return row;
+}
+
+// Update
+
+/*
+     update emp set {name=10,sal=sal*0,1 , age=age+1}  where exp
+     */
+std::unique_ptr<IStatement> Parser::ParseUpdate() {
+    Expect("update");
+    auto stmt = std::make_unique<UpdateStatement>();
+    stmt->TableName = ExpectName();
+    Expect("set");
+    Expect("{");
+    do {
+        std::string column = ExpectName();
+        Expect("=");
+        stmt->Assignments[column] = ParseExpression();
+    } while (Match(","));
+    Expect("}");
+    if (Match("where")) {
+        stmt->Where = ParseExpression();
+    }
+    return stmt;
+}
+
+// Select
+std::unique_ptr<IStatement> Parser::ParseSelect() {
+    Expect("select");
+    auto stmt = std::make_unique<SelectStatement>();
+    if (Match("distinct")) stmt->IsDistinct = true;
+    stmt->Columns = ParseSelectColumn();
+    Expect("from");
+    stmt->TableName = ExpectName();
+    if (!IsAtEnd() && Current().GetType() == TokenType::Identifier) {
+        stmt->Alias = Expect(TokenType::Identifier).GetValue();
+        std::transform(stmt->Alias.begin(), stmt->Alias.end(), stmt->Alias.begin(), ::tolower);
+    }
+    while (IsJoinStart()) {
+        stmt->Joins.push_back(ParseJoin());
+    }
+    if (Match("where")) {
+        if (IsAtEnd()) throw ParseException("Expected expression after WHERE");
+        stmt->Where = ParseExpression();
+    }
+    if (Match("group")) {
+        Expect("by");
+        stmt->GroupBy = ParseGroupBy();
+    }
+    if (Match("having")) {
+        stmt->Having = ParseExpression();
+    }
+    if (Match("order")) {
+        Expect("by");
+        stmt->OrderBy = ParseOrderBy();
+    }
+    if (Match("limit")) {
+        stmt->Limit = std::stoi(Expect(TokenType::IntLiteral).GetValue());
+    }
+    if (Match("offset")) {
+        stmt->Offset = std::stoi(Expect(TokenType::IntLiteral).GetValue());
+    }
+    return stmt;
+}
+
+bool Parser::IsJoinStart() const {
+    if (IsAtEnd()) return false;
+    std::string val = Current().GetValue();
+    std::transform(val.begin(), val.end(), val.begin(), ::tolower);
+    return val == "join" || val == "inner" || val == "left" || val == "right";
+}
+
+JoinClause Parser::ParseJoin() {
+    JoinClause jc;
+    if (Match("left")) jc.Type = JoinType::Left;
+    else if (Match("right")) jc.Type = JoinType::Right;
+    else if (Match("inner")) jc.Type = JoinType::Inner;
+    else jc.Type = JoinType::Inner; // default "join"
+    Expect("join");
+    jc.TableName = ExpectName();
+    if (!IsAtEnd() && Current().GetType() == TokenType::Identifier) {
+        jc.Alias = Expect(TokenType::Identifier).GetValue();
+        std::transform(jc.Alias.begin(), jc.Alias.end(), jc.Alias.begin(), ::tolower);
+    }
+    Expect("on");
+    jc.On = ParseExpression();
+    return jc;
+}
+
+std::vector<std::string> Parser::ParseGroupBy() {
+    std::vector<std::string> result;
+    do {
+        result.push_back(Expect(TokenType::Identifier).GetValue());
+        std::transform(result.back().begin(), result.back().end(), result.back().begin(), ::tolower);
+    } while (Match(","));
+    return result;
+}
+
+std::vector<OrderByClause> Parser::ParseOrderBy() {
+    std::vector<OrderByClause> result;
+    do {
+        OrderByClause ob;
+        ob.Column = Expect(TokenType::Identifier).GetValue();
+        std::transform(ob.Column.begin(), ob.Column.end(), ob.Column.begin(), ::tolower);
+        ob.Descending = Match("desc");
+        result.push_back(ob);
+    } while (Match(","));
+    return result;
+}
+
+std::vector<SelectColumn> Parser::ParseSelectColumn() {
+    std::vector<SelectColumn> cols;
+    do {
+        if (Current().GetType() == TokenType::Star) {
+            SelectColumn sc;
+            sc.IsStar = true;
+            ++_pos;
+            cols.push_back(std::move(sc));
+        } else {
+            /*
+                select a+b as S , ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY order_date DESC) as rn
+                */
+            SelectColumn sc;
+            sc.Column = ParseExpression();
+            bool isWindow = false;
+            std::string windowFunc;
+            std::vector<std::string> partitionBy;
+            std::vector<OrderByClause> windowOrder;
+
+            // Check for OVER clause
+            if (auto* fn = dynamic_cast<FunctionExpr*>(sc.Column.get()); fn && Match("over")) {
+                isWindow = true;
+                windowFunc = fn->Name;
+                Expect("(");
+                if (Match("partition")) {
+                    Expect("by");
+                    do { partitionBy.push_back(ExpectName()); } while (Match(","));
+                }
+                if (Match("order")) {
+                    Expect("by");
+                    windowOrder = ParseOrderBy();
+                }
+                Expect(")");
+            }
+
+            if (Match("as")) {
+                sc.Alias = ExpectName();
+            }
+
+            sc.IsWindow = isWindow;
+            sc.WindowFunc = windowFunc;
+            sc.PartitionBy = partitionBy;
+            sc.WindowOrder = windowOrder;
+            cols.push_back(std::move(sc));
+        }
+    } while (Match(","));
+    return cols;
+}
+
+// Show
+/*
+     show tables
+     show schema [table_name]
+     show indexes [table_name]
+     show triggers [table_name]
+     */
+
+std::unique_ptr<IStatement> Parser::ParseShow() {
+    Expect("show");
+    if (Current().GetType() != TokenType::Keyword)
+        throw ParseException("Expected keyword after SHOW");
+    std::string what = Current().GetValue();
+    std::transform(what.begin(), what.end(), what.begin(), ::tolower);
+    ++_pos;
+    std::optional<std::string> target;
+    if (what != "tables") {
+        target = ExpectName();
+    }
+    auto stmt = std::make_unique<ShowStatement>();
+    stmt->What = what;
+    stmt->Target = target;
+    return stmt;
+}
+
+// Expression parsing (recursive descent)
+std::unique_ptr<Expression> Parser::ParseExpression() {
+    // should do from the higher priority
+    // term/litreal/paren ()  -> Mul/div -> Add/Sub -> Comparison -> Not -> And -> Or
+    return ParseOr();
+}
+
+std::unique_ptr<Expression> Parser::ParseOr() {
+    auto left = ParseAnd();
+    while (Match("or")) {
+        auto right = ParseAnd();
+        auto bin = std::make_unique<BinaryExpr>();
+        bin->Left = std::move(left);
+        bin->Op = "or";
+        bin->Right = std::move(right);
+        left = std::move(bin);
+    }
+    return left;
+}
+
+std::unique_ptr<Expression> Parser::ParseAnd() {
+    auto left = ParseNot();
+    while (Match("and")) {
+        auto right = ParseNot();
+        auto bin = std::make_unique<BinaryExpr>();
+        bin->Left = std::move(left);
+        bin->Op = "and";
+        bin->Right = std::move(right);
+        left = std::move(bin);
+    }
+    return left;
+}
+
+std::unique_ptr<Expression> Parser::ParseNot() {
+    if (Match("not")) {
+        auto operand = ParseComparison();
+        auto unary = std::make_unique<UnaryExpr>();
+        unary->Op = "not";
+        unary->Operand = std::move(operand);
+        return unary;
+    }
+    return ParseComparison();
+}
+
+std::unique_ptr<Expression> Parser::ParseComparison() {
+    auto left = ParseAddSubExpression();
+
+    if (Match("is")) {
+        bool notFlag = Match("not");
+        Expect("null");
+        auto isNull = std::make_unique<IsNullExpr>();
+        isNull->Value = std::move(left);
+        isNull->Not = notFlag;
+        return isNull;
+    }
+
+    if (Match("between")) {
+        auto lower = ParseAddSubExpression();
+        Expect("and");
+        auto upper = ParseAddSubExpression();
+        auto between = std::make_unique<BetweenExpr>();
+        between->Value = std::move(left);
+        between->Lower = std::move(lower);
+        between->Upper = std::move(upper);
+        return between;
+    }
+
+    if (Match("in")) {
+        Expect("(");
+        std::vector<std::unique_ptr<Expression>> values;
+        if (!Match(")")) {
+            do {
+                values.push_back(ParseExpression());
+            } while (Match(","));
+            Expect(")");
+        }
+        auto inExpr = std::make_unique<InExpr>();
+        inExpr->Value = std::move(left);
+        inExpr->Values = std::move(values);
+        return inExpr;
+    }
+
+    if (Match("like")) {
+        auto pattern = ParseAddSubExpression();
+        auto like = std::make_unique<LikeExpr>();
+        like->Value = std::move(left);
+        like->Pattern = std::move(pattern);
+        return like;
+    }
+
+    // Comparison operators
+    std::vector<std::string> ops = {"!=", ">=", "<=", "=", ">", "<"};
+    for (const auto& op : ops) {
+        if (Match(op)) {
+            auto right = ParseAddSubExpression();
+            auto bin = std::make_unique<BinaryExpr>();
+            bin->Left = std::move(left);
+            bin->Op = op;
+            bin->Right = std::move(right);
+            left = std::move(bin);
+            break;
+        }
+    }
+    return left;
+}
+
+std::unique_ptr<Expression> Parser::ParseAddSubExpression() {
+    auto left = ParseMulDivExpression();
+    while (Match("+") || Match("-")) {
+        std::string op = _tokens[_pos - 1].GetValue();
+        std::transform(op.begin(), op.end(), op.begin(), ::tolower);
+        auto right = ParseMulDivExpression();
+        auto bin = std::make_unique<BinaryExpr>();
+        bin->Left = std::move(left);
+        bin->Op = op;
+        bin->Right = std::move(right);
+        left = std::move(bin);
+    }
+    return left;
+}
+
+std::unique_ptr<Expression> Parser::ParseMulDivExpression() {
+    auto left = ParseTerm();
+    while (Match("*") || Match("/")) {
+        std::string op = _tokens[_pos - 1].GetValue();
+        std::transform(op.begin(), op.end(), op.begin(), ::tolower);
+        auto right = ParseTerm();
+        auto bin = std::make_unique<BinaryExpr>();
+        bin->Left = std::move(left);
+        bin->Op = op;
+        bin->Right = std::move(right);
+        left = std::move(bin);
+    }
+    return left;
+}
+
+std::unique_ptr<Expression> Parser::ParseTerm() {
+    const Token& t = Current();
+
+    // Function call
+    if ((t.GetType() == TokenType::Identifier || t.GetType() == TokenType::Keyword) &&
+        Peek().GetType() == TokenType::LParen) {
+        return ParseFunction();
+    }
+
+    // Column reference
+    if (t.GetType() == TokenType::Identifier || t.GetType() == TokenType::Keyword) {
+        std::string name = t.GetValue();
+        std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+        ++_pos;
+        if (!IsAtEnd() && Current().GetType() == TokenType::Dot) {
+            ++_pos;
+            std::string col = Expect(TokenType::Identifier).GetValue();
+            std::transform(col.begin(), col.end(), col.begin(), ::tolower);
+            auto colRef = std::make_unique<ColumnRef>();
+            colRef->TableName = name;
+            colRef->Column = col;
+            return colRef;
+        }
+        auto colRef = std::make_unique<ColumnRef>();
+        colRef->Column = name;
+        return colRef;
+    }
+    // Literals
+     if (t.GetType() == TokenType::IntLiteral) {
+        ++_pos;
+        auto lit = std::make_unique<Literal>();
+        lit->Value = std::stoi(t.GetValue());
+        return lit;
+    }
+     if (t.GetType() == TokenType::FloatLiteral) {
+        ++_pos;
+        auto lit = std::make_unique<Literal>();
+        lit->Value = std::stod(t.GetValue());
+        return lit;
+    }
+     if (t.GetType() == TokenType::BooleanLiteral) {
+        ++_pos;
+        auto lit = std::make_unique<Literal>();
+        lit->Value = (t.GetValue() == "true");
+        return lit;
+    }
+     if (t.GetType() == TokenType::StringLiteral) {
+        ++_pos;
+        auto lit = std::make_unique<Literal>();
+        lit->Value = t.GetValue();
+        return lit;
+    }
+     if (t.GetType() == TokenType::NullLiteral) {
+        ++_pos;
+        auto lit = std::make_unique<Literal>();
+        lit->Value = DbObject(); // null
+        return lit;
+    }
+     if (t.GetType() == TokenType::LParen) {
+        ++_pos;
+        auto expr = ParseExpression();
+        Expect(")");
+        return expr;
+    }
+    throw ParseException("Line " + std::to_string(t.GetLine()) + ": unexpected token '" + t.GetValue() + "'");
+}
+
+DbObject Parser::ParseLiteralValue() {
+    const Token& t = Current();
+    ++_pos;
+    if (t.GetType() == TokenType::IntLiteral) return std::stoi(t.GetValue());
+    if (t.GetType() == TokenType::FloatLiteral) return std::stod(t.GetValue());
+    if (t.GetType() == TokenType::StringLiteral) return t.GetValue();
+    if (t.GetType() == TokenType::BooleanLiteral) return (t.GetValue() == "true");
+    if (t.GetType() == TokenType::NullLiteral) return DbObject();
+    throw ParseException("Expected literal value but got '" + t.GetValue() + "'");
+}
+
+std::unique_ptr<Expression> Parser::ParseFunction() {
+    std::string name = Current().GetValue();
+    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+    ++_pos;
+    Expect("(");
+    std::vector<std::unique_ptr<Expression>> args;
+    if (!Match(")")) {
+        do {
+            if (Current().GetType() == TokenType::Star) {
+                auto star = std::make_unique<ColumnRef>();
+                star->Column = "*";
+                args.push_back(std::move(star));
+                ++_pos;
+            } else {
+                args.push_back(ParseExpression());
+            }
+        } while (Match(","));
+        Expect(")");
+    }
+    auto func = std::make_unique<FunctionExpr>();
+    func->Name = name;
+    func->Arguments = std::move(args);
+    return func;
+}
+
+// === ./AQL/QueryValidatorAndBinder.cpp ===
+//
+// Created by omarabdo on 6/11/26.
+//
+
+#include "AkatsukiDB/AQL/QueryValidatorAndBinder.hpp"
+
+#include <algorithm>
+
+QueryValidatorAndBinder::QueryValidatorAndBinder(TableRegistry& registry)
+    : _registry(registry) {}
+
+std::unordered_map<std::string, std::string>
+QueryValidatorAndBinder::BuildAvailable(const std::string& mainTable,
+                                        const std::optional<std::string>& mainAlias,
+                                        const std::vector<JoinClause>& joins) {
+
+    std::unordered_map<std::string, std::string> available;
+
+    AddTable(mainTable, mainAlias, available);
+
+    for (const auto& jc : joins) {
+        AddTable(jc.TableName, jc.Alias, available);
+    }
+
+    return available;
+}
+
+void QueryValidatorAndBinder::AddTable(const std::string& tableName,
+                                       const std::optional<std::string>& alias,
+                                       std::unordered_map<std::string, std::string>& available) {
+    std::string name = tableName;
+
+    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+
+    if (!_registry.TableExists(name)) return;
+
+    const auto& def = _registry.GetTable(name);
+
+    for (const auto& col : def.Columns) {
+        std::string colName = col.Name;
+        std::transform(colName.begin(), colName.end(), colName.begin(), ::tolower);
+
+        auto it = available.find(colName);
+        if (it != available.end())
+            it->second = "__ambiguous__";
+        else
+            available[colName] = name;
+
+        //table.col
+        available[name + "." + colName] = name;
+
+        // alias.col
+        if (alias.has_value()) {
+            std::string aliasLower = alias.value();
+            std::transform(aliasLower.begin(), aliasLower.end(), aliasLower.begin(), ::tolower);
+            available[aliasLower + "." + colName] = name;
+        }
+
+    }
+}
+
+std::optional<std::string> QueryValidatorAndBinder::ValidateSelect(SelectStatement& stmt) {
+    std::string tableLower = stmt.TableName;
+    std::transform(tableLower.begin(), tableLower.end(), tableLower.begin(), ::tolower);
+    if (!_registry.TableExists(tableLower))
+        return "Table " + stmt.TableName + " doesn't exist";
+
+    for (auto& jc : stmt.Joins) {
+        std::string joinTable = jc.TableName;
+        std::transform(joinTable.begin(), joinTable.end(), joinTable.begin(), ::tolower);
+        if (!_registry.TableExists(joinTable))
+            return "Table " + jc.TableName + " doesn't exist";
+    }
+
+    auto available = BuildAvailable(stmt.TableName, stmt.Alias, stmt.Joins);
+
+    for (auto& jc : stmt.Joins) {
+        if (auto err = ValidateExpression(*jc.On, available))
+            return err;
+    }
+
+    for (auto& col : stmt.Columns) {
+        if (col.IsStar) continue;
+        if (auto err = ValidateExpression(*col.Column, available))
+            return err;
+    }
+
+    if (stmt.Where) {
+        if (auto err = ValidateExpression(*stmt.Where, available))
+            return err;
+    }
+
+    for (auto& ob : stmt.OrderBy) {
+        std::string col = ob.Column;
+        std::transform(col.begin(), col.end(), col.begin(), ::tolower);
+        if (available.find(col) == available.end())
+            return "Column " + ob.Column + " in ORDER BY not found";
+    }
+
+    for (auto& col : stmt.GroupBy) {
+        std::string colLower = col;
+        std::transform(colLower.begin(), colLower.end(), colLower.begin(), ::tolower);
+        if (available.find(colLower) == available.end())
+            return "Column " + col + " in GROUP BY not found";
+    }
+
+    return std::nullopt;
+}
+
+std::optional<std::string> QueryValidatorAndBinder::ValidateUpdate(UpdateStatement& stmt) {
+    std::string tableLower = stmt.TableName;
+    std::transform(tableLower.begin(), tableLower.end(), tableLower.begin(), ::tolower);
+    if (!_registry.TableExists(tableLower))
+        return "Table " + stmt.TableName + " doesn't exist";
+
+    auto available = BuildAvailable(stmt.TableName, std::nullopt, {});
+
+    for (auto& [col, expr] : stmt.Assignments) {
+        std::string colLower = col;
+        std::transform(colLower.begin(), colLower.end(), colLower.begin(), ::tolower);
+        if (available.find(colLower) == available.end())
+            return "Column '" + col + "' in SET not found in '" + stmt.TableName + "'.";
+
+        if (auto err = ValidateExpression(*expr, available))
+            return err;
+    }
+
+    if (stmt.Where) {
+        if (auto err = ValidateExpression(*stmt.Where, available))
+            return err;
+    }
+
+    return std::nullopt;
+}
+
+std::optional<std::string> QueryValidatorAndBinder::ValidateDelete(DeleteStatement& stmt) {
+    std::string tableLower = stmt.TableName;
+    std::transform(tableLower.begin(), tableLower.end(), tableLower.begin(), ::tolower);
+    if (!_registry.TableExists(tableLower))
+        return "Table " + stmt.TableName + " doesn't exist";
+
+    if (stmt.Where) {
+        auto available = BuildAvailable(stmt.TableName, std::nullopt, {});
+        if (auto err = ValidateExpression(*stmt.Where, available))
+            return err;
+    }
+    return std::nullopt;
+}
+
+std::optional<std::string> QueryValidatorAndBinder::ValidateExpression(
+    Expression& expr,
+    const std::unordered_map<std::string, std::string>& available) {
+    // Literal always valid
+    if (dynamic_cast<Literal*>(&expr)) return std::nullopt;
+
+    if (auto* cr = dynamic_cast<ColumnRef*>(&expr)) {
+        std::string lookup;
+        if (cr->TableName.has_value())
+            lookup = cr->TableName.value() + "." + cr->Column;
+        else
+            lookup = cr->Column;
+        std::transform(lookup.begin(), lookup.end(), lookup.begin(), ::tolower);
+
+        auto it = available.find(lookup);
+        if (it == available.end())
+            return "Column '" + lookup + "' not found in any table.";
+        if (it->second == "__ambiguous__")
+            return "Column '" + cr->Column + "' is ambiguous. Use tableName.column to specify.";
+
+        // Bind table name
+        cr->TableName = it->second; // changes will reflect on the main object in heap
+        return std::nullopt;
+    }
+
+    if (auto* bin = dynamic_cast<BinaryExpr*>(&expr)) {
+        if (auto err = ValidateExpression(*bin->Left, available)) return err;
+        return ValidateExpression(*bin->Right, available);
+    }
+
+    if (auto* unary = dynamic_cast<UnaryExpr*>(&expr))
+        return ValidateExpression(*unary->Operand, available);
+
+    if (auto* isNull = dynamic_cast<IsNullExpr*>(&expr))
+        return ValidateExpression(*isNull->Value, available);
+
+    if (auto* between = dynamic_cast<BetweenExpr*>(&expr)) {
+        if (auto err = ValidateExpression(*between->Value, available)) return err;
+        if (auto err = ValidateExpression(*between->Lower, available)) return err;
+        return ValidateExpression(*between->Upper, available);
+    }
+
+    if (auto* in = dynamic_cast<InExpr*>(&expr)) {
+        if (auto err = ValidateExpression(*in->Value, available)) return err;
+        for (auto& v : in->Values) {
+            if (auto err = ValidateExpression(*v, available)) return err;
+        }
+        return std::nullopt;
+    }
+
+    if (auto* like = dynamic_cast<LikeExpr*>(&expr))
+        return ValidateExpression(*like->Value, available);
+
+    if (auto* fn = dynamic_cast<FunctionExpr*>(&expr)) {
+        for (auto& arg : fn->Arguments) {
+            // Skip "*" column
+            if (auto* cr = dynamic_cast<ColumnRef*>(arg.get())) {
+                if (cr->Column == "*") continue;
+            }
+            if (auto err = ValidateExpression(*arg, available)) return err;
+        }
+        return std::nullopt;
+    }
+
+    return std::nullopt;
+}
+
+// === ./AQL/Tokenizer.cpp ===
+//
+// Created by omarabdo on 6/11/26.
+//
+
+#include "../../include/AkatsukiDB/AQL/Tokenizer.hpp"
+
+#include <cctype>
+#include <algorithm>
+#include <stdexcept>
+
+Token::Token(TokenType type, std::string value, int line)
+    : _type(type), _value(std::move(value)), _line(line) {}
+
+std::string Token::ToString() const {
+    std::string typeStr;
+    if (_type == TokenType::Keyword) typeStr = "Keyword";
+    else if (_type == TokenType::Identifier) typeStr = "Identifier";
+    else if (_type == TokenType::Operator) typeStr = "Operator";
+    else if (_type == TokenType::IntLiteral) typeStr = "IntLiteral";
+    else if (_type == TokenType::FloatLiteral) typeStr = "FloatLiteral";
+    else if (_type == TokenType::StringLiteral) typeStr = "StringLiteral";
+    else if (_type == TokenType::BooleanLiteral) typeStr = "BooleanLiteral";
+    else if (_type == TokenType::NullLiteral) typeStr = "NullLiteral";
+    else if (_type == TokenType::Comma) typeStr = "Comma";
+    else if (_type == TokenType::Colon) typeStr = "Colon";
+    else if (_type == TokenType::Dot) typeStr = "Dot";
+    else if (_type == TokenType::Star) typeStr = "Star";
+    else if (_type == TokenType::LParen) typeStr = "LParen";
+    else if (_type == TokenType::RParen) typeStr = "RParen";
+    else if (_type == TokenType::LBrace) typeStr = "LBrace";
+    else if (_type == TokenType::RBrace) typeStr = "RBrace";
+    else if (_type == TokenType::LBracket) typeStr = "LBracket";
+    else if (_type == TokenType::RBracket) typeStr = "RBracket";
+    else if (_type == TokenType::EOF_) typeStr = "EOF";
+    return "[ " + typeStr + " : " + _value + " ]  Line " + std::to_string(_line);
+}
+
+const std::unordered_set<std::string>& Tokenizer::GetKeywords() {
+    static const std::unordered_set<std::string> keywords = {
+        "select", "from", "where", "insert", "into", "update", "show", "schema", "tables", "indexes", "triggers",
+        "delete", "create", "table", "drop", "alter", "pk", "fk",
+        "on", "index", "auto", "not", "true", "false", "and", "or",
+        "cascade", "restrict", "join", "left", "right", "inner", "order",
+        "by", "asc", "desc", "group", "having", "limit", "in", "between", "like", "distinct",
+        "over", "partition", "row_number", "sum", "count", "avg", "min", "max", "begin", "commit", "rollback"
+    };
+    return keywords;
+}
+
+Tokenizer::Tokenizer(const std::string& input) : _input(input), _pos(0), _line(1) {}
+
+std::vector<Token> Tokenizer::Tokenize() {
+    std::vector<Token> tokens;
+    _pos = 0;
+    _line = 1;
+
+    while (_pos < _input.size()) {
+
+        SkipWhitespaceAndComments();
+
+        if (_pos >= _input.size()) break;
+
+        char c = _input[_pos];
+        Token tk(TokenType::EOF_, "", _line); // dummy
+
+        if (c == '.') {
+            tk = Token(TokenType::Dot, ".", _line);
+            ++_pos;
+        } else if (c == ',') {
+            tk = Token(TokenType::Comma, ",", _line);
+            ++_pos;
+        } else if (c == '*') {
+            tk = Token(TokenType::Star, "*", _line);
+            ++_pos;
+        } else if (c == '(') {
+            tk = Token(TokenType::LParen, "(", _line);
+            ++_pos;
+        } else if (c == ')') {
+            tk = Token(TokenType::RParen, ")", _line);
+            ++_pos;
+        } else if (c == '{') {
+            tk = Token(TokenType::LBrace, "{", _line);
+            ++_pos;
+        } else if (c == '}') {
+            tk = Token(TokenType::RBrace, "}", _line);
+            ++_pos;
+        } else if (c == '[') {
+            tk = Token(TokenType::LBracket, "[", _line);
+            ++_pos;
+        } else if (c == ']') {
+            tk = Token(TokenType::RBracket, "]", _line);
+            ++_pos;
+        } else if (c == ':') {
+            tk = Token(TokenType::Colon, ":", _line);
+            ++_pos;
+        } else if (c == '\'' || c == '"') {
+            tk = ReadString(c);
+        } else if (std::isdigit(c) ||
+                   (c == '-' && _pos + 1 < _input.size() && std::isdigit(_input[_pos + 1]))) {
+            tk = ReadNumber();
+        } else if (std::isalpha(c) || c == '_') {
+            tk = ReadIdentifierOrKeyword();
+        } else if (std::string("><=!+-*/").find(c) != std::string::npos) {
+            char next = (_pos + 1 < _input.size()) ? _input[_pos + 1] : '\0';
+            if (c == '!' && next != '=')
+                throw std::runtime_error("Unexpected character '!' at line " + std::to_string(_line));
+
+            std::string op;
+            if (c == '!' && next == '=') {
+                op = "!=";
+                _pos += 2;
+            } else if (c == '<' && next == '=') {
+                op = "<=";
+                _pos += 2;
+            } else if (c == '>' && next == '=') {
+                op = ">=";
+                _pos += 2;
+            }else {
+                op = std::string(1, c);
+                ++_pos;
+            }
+            tk = Token(TokenType::Operator, op, _line);
+        } else {
+            throw std::runtime_error("Unexpected character: " + std::string(1, c) + " at line " + std::to_string(_line));
+        }
+
+        tokens.push_back(tk);
+    }
+
+    tokens.emplace_back(TokenType::EOF_, "", _line);
+    return tokens;
+}
+
+void Tokenizer::SkipWhitespaceAndComments() {
+    while (_pos < _input.size()) {
+        if (_input[_pos] == '\n') {
+            ++_line;
+            ++_pos;
+            continue;
+        }
+        if (std::isspace(_input[_pos])) {
+            ++_pos;
+            continue;
+        }
+
+        // Line comment //
+        if (_pos + 1 < _input.size() && _input[_pos] == '/' && _input[_pos + 1] == '/') {
+            while (_pos < _input.size() && _input[_pos] != '\n') ++_pos;
+            continue;
+        }
+
+        // Block comment /*
+        if (_pos + 1 < _input.size() && _input[_pos] == '/' && _input[_pos + 1] == '*') {
+            _pos += 2;
+            while (_pos + 1 < _input.size() && !(_input[_pos] == '*' && _input[_pos + 1] == '/')) {
+                if (_input[_pos] == '\n') ++_line;
+                ++_pos;
+            }
+            _pos += 2;
+            continue;
+        }
+        break;
+    }
+}
+
+Token Tokenizer::ReadIdentifierOrKeyword() {
+    size_t start = _pos;
+    while (_pos < _input.size() && ((isdigit(_input[_pos]) || isalpha(_input[_pos]) )
+        || _input[_pos] == '_')   ) {
+        ++_pos;
+    }
+    std::string value = _input.substr(start, _pos - start);
+    std::string lower = value;
+    std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+
+    const auto& keywords = GetKeywords();
+    if (keywords.find(lower) != keywords.end()) {
+        if (lower == "true" || lower == "false")
+            return Token(TokenType::BooleanLiteral, lower, _line);
+        if (lower == "null")
+            return Token(TokenType::NullLiteral, lower, _line);
+        return Token(TokenType::Keyword, lower, _line);
+    }
+    return Token(TokenType::Identifier, value, _line);
+}
+
+Token Tokenizer::ReadString(char quote) {
+    ++_pos; // skip opening quote " '
+    size_t start = _pos;
+    while (_pos < _input.size() && _input[_pos] != quote) {
+        ++_pos;
+    }
+    if (_pos >= _input.size())
+        throw std::runtime_error("Unterminated string literal at line " + std::to_string(_line));
+    std::string value = _input.substr(start, _pos - start);
+    ++_pos; // skip closing quote " '
+    return Token(TokenType::StringLiteral, value, _line);
+}
+
+Token Tokenizer::ReadNumber() {
+    size_t start = _pos;
+    if (_input[_pos] == '-') ++_pos;
+    while (_pos < _input.size() && std::isdigit(_input[_pos])  ) ++_pos;
+
+    if (_pos < _input.size() && _input[_pos] == '.') {
+        ++_pos;
+        while (_pos < _input.size() && std::isdigit(_input[_pos])) ++_pos;
+        std::string value = _input.substr(start, _pos - start);
+        return Token(TokenType::FloatLiteral, value, _line);
+    }
+    std::string value = _input.substr(start, _pos - start);
+    return Token(TokenType::IntLiteral, value, _line);
+}
+
+
+
+// === ./Storage/StorageLayout.cpp ===
+//
+// Created by omarabdo on 6/7/26.
+//
+
+#include "../../include/AkatsukiDB/Storage/StorageLayout.hpp"
+
+void StorageLayout::CreateFolders() const {
+    std::filesystem::create_directories(TablesFolder());
+    std::filesystem::create_directories(IndexFolder());
+    std::filesystem::create_directories(SchemaFolder());
+    std::filesystem::create_directories(WalFolder());
+}
+
+StorageLayout::StorageLayout(const std::string &rootDirectory):_root(rootDirectory) {
+CreateFolders();
+}
+
+std::string StorageLayout::TablesFolder() const {
+ return (_root / "tables").string();
+}
+
+std::string StorageLayout::IndexFolder() const {
+
+return (_root / "index").string();
+}
+
+std::string StorageLayout::SchemaFolder() const {
+
+    return (_root / "schema").string();
+}
+
+std::string StorageLayout::WalFolder() const {
+
+    return (_root / "wal").string();
+
+}
+
+std::string StorageLayout::TableFile(const std::string &tableName) const {
+return (_root / "tables" / (tableName + ".tbl")).string();
+}
+
+std::string StorageLayout::IndexFile(const std::string &indexName) const {
+    return (_root / "index" / (indexName + ".idx")).string();
+}
+
+std::string StorageLayout::SchemaFile(const std::string &tableName) const {
+    return (_root / "schema" / (tableName + ".schema.json")).string();
+}
+
+std::string StorageLayout::WalFile() const {
+    return (_root / "wal" / "wal_current.log").string();
+}
+
+
+// === ./Storage/Page.cpp ===
+//
+// Created by omarabdo on 6/7/26.
+//
+
+#include "../../include/AkatsukiDB/Storage/Page.hpp"
+
+#include <cstring>
+#include <iostream>
+
+template<typename T>
+T Page::Read(size_t offset) const {
+     T value;
+    std::memcpy(&value,_data.data()+offset,sizeof(T));
+   //function copies the memory in a byte-by-byte , memcpy(target,source,NumberOfBytes)
+ return value;
+}
+
+template<typename T>
+void Page::Write(size_t offset, T value) {
+    std::memcpy(_data.data() + offset, &value, sizeof(T));
+    MarkDirty();
+}
+
+Page::Page(int pageId, std::vector<uint8_t> data)
+    : _data(std::move(data)), _pageId(pageId) {}
+// It only copies the 24-byte vector pointers on the stack so _data looks at the
+// existing Heap memory, completely avoiding a slow 4096-byte deep copy!
+
+// when we create page we also do move , new Page(10,move(data))
+
+ bool Page::isDirty() const {
+ return _isDirty;
+}
+
+ const std::vector<uint8_t> & Page::Data() const {
+return _data;
+ //returns a read-only reference to the 24-byte (the std::vector object itself)  3 pointers
+}
+
+ int Page::GetPageId() const {
+  return _pageId;
+}
+
+ void Page::SetPageId(int pageId) {
+  Write<int>(10,pageId);
+ _pageId = pageId;
+}
+
+ short Page::GetSlotCount() const {
+  return Read<short>(0);
+}
+
+ void Page::SetSlotCount(short slotCount) {
+ Write<short>(0,slotCount);
+}
+
+ int Page::GetFreeOffset() const {
+return Read<int>(2);
+}
+
+ void Page::SetFreeOffset(int freeOffset) {
+  Write<int>(2,freeOffset);
+}
+
+ int Page::GetNextPageId() const {
+   return Read<int>(6);
+}
+
+ void Page::SetNextPageId(int nextPageId) {
+ Write<int>(6, nextPageId);
+}
+
+ std::span<uint8_t> Page::GetSlot(int slotIndex, int rowSize) {
+return std::span<uint8_t>(_data.data() + 16 + slotIndex*rowSize,rowSize);
+}
+
+ void Page::MarkDirty() {
+  _isDirty=true;
+}
+
+ void Page::ClearDirty() {
+  _isDirty=false;
+}
+
+uint8_t* Page:: MutableData() { return _data.data(); } // return pointer for the first byte , and he can edit/write in the data
+
+/*
+Page Format :
+PAGE = 4096 byte
+First 16 bytes = page header:
+  bytes 0–1   : SlotCount     (how many rows are in this page)   2^16
+  bytes 2–5   : FreeOffset    (where the next row will be written) 2^32
+  bytes 6–9   : NextPageId    (0 if this is the last page) 2^32
+  bytes 10–13 : PageId        (which page number is this) 2^32
+  bytes 14–15 : reserved
+Bytes 16 to 4095 = row slots.
+*/
+
+// === ./Storage/PageManager.cpp ===
+//
+// Created by omarabdo on 6/7/26.
+//
+
+#include "../../include/AkatsukiDB/Storage/PageManager.hpp"
+
+
+PageManager::PageManager(const std::string &filepath):_filepath(filepath) {
+
+    //try to open binary file in Read/Writ mode
+    _stream.open(_filepath , std::ios::in | std::ios::out | std::ios::binary);
+    //The get cursor (g): Used for reading , The put cursor (p): Used for writing.
+
+    if (!_stream.is_open()) {
+        // Create the file explicitly
+        _stream.open(_filepath, std::ios::out | std::ios::binary);
+        _stream.close();
+        // Reopen in standard Read/Write mode
+        _stream.open(_filepath, std::ios::in | std::ios::out | std::ios::binary);
+    }
+
+    _stream.seekg (0, std::ios::end);
+    std::streampos length = _stream.tellg(); // file size in bytes
+    _totalPages = static_cast<int> (length)/PAGE_SIZE;
+
+    if (_totalPages==0)
+        InitializeNewFile();
+}
+
+
+PageManager::~PageManager() {
+    if (_stream.is_open())
+        _stream.close();
+}
+
+void PageManager::InitializeNewFile() {
+
+    std::vector<uint8_t>headerPage(PAGE_SIZE,0);
+    headerPage[0] = 'A';
+    headerPage[1] = 'K';
+    headerPage[2] = 'T';
+    headerPage[3] = 'S';
+
+    _stream.seekp(0, std::ios::beg); // Move write cursor to beginning
+    _stream.write(reinterpret_cast<char*>(headerPage.data()), PAGE_SIZE);
+    // stream only write char , so we convert the current data to char then write
+    _stream.flush();
+
+    _totalPages = 1;
+}
+
+
+
+
+int PageManager::AllocatePage() {
+
+    int newPageid = _totalPages;
+    std::vector<uint8_t>emptyData(PAGE_SIZE,0);
+    _stream.seekp(0, std::ios::end); // Move write cursor to end
+    _stream.write(reinterpret_cast<char*>(emptyData.data()), PAGE_SIZE);
+    _stream.flush();
+
+    ++_totalPages;
+    return newPageid;
+}
+
+int PageManager::TotalPages() const {
+ return _totalPages;
+}
+
+std::unique_ptr<Page> PageManager::ReadPage(int pageId) {
+    if (pageId < 0 || pageId >= _totalPages) {
+        throw std::out_of_range("Page " + std::to_string(pageId) + " does not exist in this file.");
+    }
+
+    std::vector<uint8_t> data(PAGE_SIZE);
+
+    // Seek to the exact byte offset of the page
+    _stream.seekg(static_cast<std::streampos>(pageId) * PAGE_SIZE, std::ios::beg);
+    _stream.read(reinterpret_cast<char*>(data.data()), PAGE_SIZE);
+
+    return std::make_unique<Page>(pageId, std::move(data));
+    /*
+     once PageManger creates the page with uniquePtr it transfere the Ownership to
+     BufferPool then PageManger removes the local unique_ptr
+     then BufferPool will promote it to shared_ptr so more than instance can use it
+     */
+}
+
+void PageManager::WritePage(Page &page) {
+  if (!page.isDirty())
+      return;
+    _stream.seekp(static_cast<std::streampos>(page.GetPageId()) * PAGE_SIZE, std::ios::beg);
+    _stream.write(reinterpret_cast<const char*>(page.Data().data()), PAGE_SIZE);
+    _stream.flush();
+
+    page.ClearDirty();
+}
+
+
+// === ./Storage/LruCache.cpp ===
+//
+// Created by omarabdo on 6/7/26.
+//
+
+#include "../../include/AkatsukiDB/Storage/LruCache.hpp"
+
+void LruCache::AddFront(Node* node) {
+   node->prev = head;
+    node->next=head->next;
+    head->next->prev = node;
+    head->next=node;
+}
+
+void LruCache::Remove(Node * node) {
+    node->prev->next=node->next;
+    node->next->prev=node->prev;
+}
+
+
+LruCache::LruCache(int capacity):_capacity(capacity) {
+
+  head = new Node(-1,nullptr);
+  tail = new Node(-1,nullptr);
+
+    head->next = tail;
+    tail->prev = head;
+
+}
+
+LruCache::~LruCache() {
+    delete head;
+    delete tail;
+}
+
+std::shared_ptr<Page> LruCache::Get(int pageId) {
+  if (cache.find(pageId) == cache.end())
+      return nullptr;
+
+    Node* node = cache[pageId].get();
+
+    Remove(node);
+    AddFront(node);
+
+    return node->page;
+}
+
+void LruCache::Put(int pageId, std::shared_ptr<Page> page) {
+
+   if (cache.find(pageId) != cache.end()) {
+       Node *node = cache[pageId].get();
+       node->page = page;
+       Remove(node);
+       AddFront(node);
+       return;
+   }
+
+    if (cache.size()>=_capacity) {
+        Node* LruNode = tail->prev;
+        if (LruNode->page!=nullptr && LruNode->page->isDirty() && OnEvict) {
+            OnEvict(LruNode->page);
+        }
+        Remove(LruNode);
+        cache.erase(LruNode->pageId);
+    }
+    auto newNode = std::make_unique<Node>(pageId, page);
+    Node* rawPointer = newNode.get();
+    cache[pageId] = std::move(newNode);
+    AddFront(rawPointer);
+}
+
+std::vector<std::shared_ptr<Page>> LruCache::Pages() const {
+    std::vector<std::shared_ptr<Page>> pages;
+    Node* root = head->next;
+    while (root!=tail) {
+        if (root->page!=nullptr)
+       pages.push_back(root->page);
+        root = root->next;
+    }
+    return pages;
+}
+
+
+// === ./Storage/BufferPool.cpp ===
+//
+// Created by omarabdo on 6/7/26.
+//
+
+#include "../../include/AkatsukiDB/Storage/BufferPool.hpp"
+
+/*
+ in c++
+ the objects is created before when the constructor called before {}
+ so we make it with initialization list : _page(string s)
+ */
+BufferPool::BufferPool(const std::string &dbFilePath):_pageManager(dbFilePath),_cache(MaxCapacity) {
+
+    _cache.OnEvict = [this](std::shared_ptr<Page> page) {
+        // Dereference the pointer (*) to pass the actual Page reference to WritePage
+        this->_pageManager.WritePage(*page);
+        // we expect by reference so we need the physical object
+        // if we on stack we will pass it directly , but if we have pointer we want the object itself so *p
+    };
+}
+
+int BufferPool::TotalPages() const {
+    return _pageManager.TotalPages();
+}
+
+int BufferPool::AllocatePage() {
+ return _pageManager.AllocatePage();
+}
+
+std::shared_ptr<Page> BufferPool::GetPage(int pageId) {
+
+   auto page = _cache.Get(pageId);
+    if (page==nullptr) {
+
+        //read from disk then
+        std::unique_ptr<Page> uniquePage = _pageManager.ReadPage(pageId);
+
+        page = std::move(uniquePage);
+
+        _cache.Put(pageId,page);
+    }
+    return page;// return a copy of who is calling me so ref count increase 
+}
+
+void BufferPool::FlushAll() {
+  for (auto &page : _cache.Pages()) {
+      if (page->isDirty()) {
+          _pageManager.WritePage(*page);
+      }
+  }
+}
+
+BufferPool::~BufferPool() {
+    FlushAll();
+}
+
+
+// === ./Engine/AkatsukiEngine.cpp ===
+//
+// Created by omarabdo on 6/11/26.
+//
+
+#include "../../include/AkatsukiDB/Engine/AkatsukiEngine.hpp"
+
+
+
+#include "AkatsukiDB/Storage/StorageLayout.hpp"
+#include "AkatsukiDB/Table/TableRegistry.hpp"
+#include "AkatsukiDB/Table/TableManager.hpp"
+#include "AkatsukiDB/Table/TableDefinition.hpp"
+#include "AkatsukiDB/Index/BPlusTree.hpp"
+#include "AkatsukiDB/AQL/Tokenizer.hpp"
+#include "AkatsukiDB/AQL/Parser.hpp"
+#include "AkatsukiDB/AQL/Executor.hpp"
+#include <filesystem>
+
+
+
+AkatsukiEngine::AkatsukiEngine(const std::string& dataDirectory) {
+    _layout = std::make_unique<StorageLayout>(dataDirectory);
+    _registry = std::make_unique<TableRegistry>(*_layout);
+
+    for (const auto& name : _registry->GetAllTableNames())
+        OpenTable(name);
+
+    BuildReferencedByMap();
+
+    _executor = std::make_unique<Executor>(
+        *_registry, *_layout, _tables, _indexes, _referencedBy);
+}
+
+AkatsukiEngine::~AkatsukiEngine() {
+    Dispose();
+}
+
+QueryResult AkatsukiEngine::Execute(const std::string& aql) {
+    if (aql.empty())
+        return QueryResult::Error("Empty query.");
+    try {
+        Tokenizer tokenizer(aql);
+        auto tokens = tokenizer.Tokenize();
+        Parser parser;
+        auto ast = parser.Parse(tokens);
+        return _executor->Execute(*ast);
+    } catch (const std::exception& ex) {
+        return QueryResult::Error(ex.what());
+    }
+}
+
+void AkatsukiEngine::OpenTable(const std::string& name) {
+    std::string lowerName = name;
+    std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), ::tolower);
+    auto& def = _registry->GetTable(lowerName);
+
+    auto bp = std::make_unique<BufferPool>(_layout->TableFile(lowerName));
+
+    _tables[lowerName] = std::make_unique<TableManager>(std::move(bp), def.RowSizeBytes);
+
+    for (auto& idxDef : def.Indexes) {
+        auto idxPath = _layout->IndexFile(idxDef.Name);
+        auto tree = std::make_unique<BPlusTree>(idxPath);
+        _indexes[lowerName].emplace_back(idxDef, std::move(tree));
+    }
+}
+
+void AkatsukiEngine::BuildReferencedByMap() {
+    auto names = _registry->GetAllTableNames();
+    for (const auto& name : names) {
+        auto& def = _registry->GetTable(name);
+        for (auto& fk : def.ForeignKeys) {
+            std::string refTable = fk.RefTable;
+            std::transform(refTable.begin(), refTable.end(), refTable.begin(), ::tolower);
+            _referencedBy[refTable].push_back({name, fk});
+        }
+    }
+}
+
+void AkatsukiEngine::CloseTable(const std::string& name) {
+    std::string lowerName = name;
+    std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), ::tolower);
+    auto it = _tables.find(lowerName);
+    if (it != _tables.end()) {
+        it->second.reset(); // destructor will flush and close
+        _tables.erase(it);
+    }
+    auto idxIt = _indexes.find(lowerName);
+    if (idxIt != _indexes.end()) {
+        for (auto& [def, tree] : idxIt->second)
+            tree.reset(); // BPlusTree destructor flushes
+        _indexes.erase(idxIt);
+    }
+}
+
+void AkatsukiEngine::Dispose() {
+    std::vector<std::string> names;
+    for (auto& p : _tables) names.push_back(p.first);
+    for (const auto& name : names)
+        CloseTable(name);
+}
+
+
+
+// === ./Engine/QueryResult.cpp ===
+//
+// Created by omarabdo on 6/11/26.
+//
+
+#include "../../include/AkatsukiDB/Engine/QueryResult.hpp"
+
+
+
+    QueryResult QueryResult::Error(const std::string& message) {
+        QueryResult res;
+        res.IsError = true;
+        res.ErrorMessage = message;
+        return res;
+    }
+
+    QueryResult QueryResult::Success(const std::vector<std::string>& cols,
+                                     std::vector<DbRow> rows) {
+        QueryResult res;
+        res.Columns = cols;
+        res.Rows = std::move(rows);
+        res.RowsAffected = static_cast<int>(res.Rows.size());
+        return res;
+    }
+
+    QueryResult QueryResult::Affected(int count, const std::optional<std::string>& plan) {
+        QueryResult res;
+        res.RowsAffected = count;
+        res.PlanUsed = plan;
+        return res;
+    }
+
+
+
+// === ./Index/BPlusTreeNode.cpp ===
+//
+// Created by omarabdo on 6/10/26.
+//
+
+#include "../../include/AkatsukiDB/Index/BPlusTreeNode.hpp"
+
+BPlusTreeNode::BPlusTreeNode(std::shared_ptr<Page> page) : _page(std::move(page)) {
+    if (!_page) throw std::runtime_error("Null page in BPlusTreeNode");
+}
+
+BPlusTreeNode BPlusTreeNode::CreateLeaf(std::shared_ptr<Page> page, int pageId) {
+    BPlusTreeNode node(std::move(page));
+    node.SetNextLeafPageId(-1);
+    node.SetPrevLeafPageId(-1);
+    node.SetPageId(pageId);
+    node.SetType(NodeType::Leaf);
+    return node;
+}
+
+BPlusTreeNode BPlusTreeNode::CreateInternal(std::shared_ptr<Page> page, int pageId) {
+    BPlusTreeNode node(std::move(page));
+    node.SetPageId(pageId);
+    node.SetType(NodeType::Internal);
+    return node;
+}
+
+NodeType BPlusTreeNode::GetType() const {
+    return static_cast<NodeType>(_page->MutableData()[0]);
+}
+
+void BPlusTreeNode::SetType(NodeType type) {
+    _page->MutableData()[0] = static_cast<uint8_t>(type);
+    MarkDirty();
+}
+
+short BPlusTreeNode::GetKeyCount() const {
+    short val;
+    std::memcpy(&val, _page->MutableData() + 1, 2);
+    return val;
+}
+
+void BPlusTreeNode::SetKeyCount(short count) {
+    std::memcpy(_page->MutableData() + 1, &count, 2);
+    MarkDirty();
+}
+
+int BPlusTreeNode::GetParentPageId() const {
+    int val;
+    std::memcpy(&val, _page->MutableData() + 3, 4);
+    return val;
+}
+
+void BPlusTreeNode::SetParentPageId(int pid) {
+    std::memcpy(_page->MutableData() + 3, &pid, 4);
+    MarkDirty();
+}
+
+int BPlusTreeNode::GetNextLeafPageId() const {
+    int val;
+    std::memcpy(&val, _page->MutableData() + 7, 4);
+    return val;
+}
+
+void BPlusTreeNode::SetNextLeafPageId(int pid) {
+    std::memcpy(_page->MutableData() + 7, &pid, 4);
+    MarkDirty();
+}
+
+int BPlusTreeNode::GetPrevLeafPageId() const {
+    int val;
+    std::memcpy(&val, _page->MutableData() + 11, 4);
+    return val;
+}
+
+void BPlusTreeNode::SetPrevLeafPageId(int pid) {
+    std::memcpy(_page->MutableData() + 11, &pid, 4);
+    MarkDirty();
+}
+
+int BPlusTreeNode::GetPageId() const {
+    int val;
+    std::memcpy(&val, _page->MutableData() + 15, 4);
+    return val;
+}
+
+void BPlusTreeNode::SetPageId(int pid) {
+    std::memcpy(_page->MutableData() + 15, &pid, 4);
+    MarkDirty();
+}
+
+IndexKey BPlusTreeNode::GetKey(int index) const {
+    int offset = DataStart + (GetType() == NodeType::Leaf
+                              ? index * LeafEntrySize
+                              : index * InternalEntrySize + ChildSize);
+    return IndexKey(std::span<const uint8_t>(_page->MutableData() + offset, KeySize));
+}
+
+void BPlusTreeNode::SetKey(int index, const IndexKey& key) {
+    int offset = DataStart + (GetType() == NodeType::Leaf
+                              ? index * LeafEntrySize
+                              : index * InternalEntrySize + ChildSize);
+    std::memcpy(_page->MutableData() + offset, key.Data().data(), KeySize);
+    MarkDirty();
+}
+
+int BPlusTreeNode::FindKeyIndex(const IndexKey& key) const {
+    int l = 0, r = GetKeyCount() - 1, ans = GetKeyCount();
+    while (l <= r) {
+        int mid = (l + r) >> 1;
+        auto midKey = GetKey(mid);
+        if (midKey>=key) {
+            ans = mid;
+            r = mid - 1;
+        } else {
+            l = mid + 1;
+        }
+    }
+    return ans;
+}   
+
+bool BPlusTreeNode::IsLeafFull() const {
+    return GetKeyCount() >= LeafOrder();
+}
+
+std::pair<int, short> BPlusTreeNode::GetRowLocation(int index) const {
+    int offset = DataStart + index * LeafEntrySize + KeySize;
+    int pageId;
+    short slot;
+    std::memcpy(&pageId, _page->MutableData() + offset, 4);
+    std::memcpy(&slot, _page->MutableData() + offset + 4, 2);
+    return {pageId, slot};
+}
+
+void BPlusTreeNode::SetRowLocation(int index, int pageId, short slotIndex) {
+    int offset = DataStart + index * LeafEntrySize + KeySize;
+    std::memcpy(_page->MutableData() + offset, &pageId, 4);
+    std::memcpy(_page->MutableData() + offset + 4, &slotIndex, 2);
+    MarkDirty();
+}
+
+bool BPlusTreeNode::IsInternalFull() const {
+    return GetKeyCount() >= InternalOrder();
+}
+
+int BPlusTreeNode::GetChildPageId(int index) const {
+    int offset = DataStart + index * InternalEntrySize;
+    int child;
+    std::memcpy(&child, _page->MutableData() + offset, 4);
+    return child;
+}
+
+void BPlusTreeNode::SetChildPageId(int index, int childPageId) {
+    int offset = DataStart + index * InternalEntrySize;
+    std::memcpy(_page->MutableData() + offset, &childPageId, 4);
+    MarkDirty();
+}
+
+void BPlusTreeNode::MarkDirty() { _page->MarkDirty(); }
+void BPlusTreeNode::ClearDirty() { _page->ClearDirty(); }
+
+
+/*
+ Bytes	Field	Header
+   0	NodeType	  1	    0 = Internal, 1 = Leaf
+   1–2	KeyCount	2	Number of keys currently in node
+   3–6	ParentId	4	The PageId of this node's parent
+   7–10	NextId	4	Next leaf in the linked list (-1 for internal)
+   11–14	PrevId	4	Previous leaf in the linked list (-1 for internal)
+   15–18	PageId	4	Self-Identification
+   19	Reserved	1	Extra padding for alignment
+
+
+ LEAF NODE — 4096 bytes:
+   entries start at byte 20
+    Entry 0: [128 bytes key][4 bytes tblPageId][2 bytes slotIndex] = 134 bytes
+    Entry 1: [128 bytes key][4 bytes tblPageId][2 bytes slotIndex]
+    Entry 2: [128 bytes key][4 bytes tblPageId][2 bytes slotIndex]
+   --------------------------------
+   INTERNAL NODE — 4096 bytes:
+   data starts at byte 20
+   child[0]:  [4 bytes idxPageId]
+   key[0]:    [128 bytes]
+    child[1]:  [4 bytes idxPageId]
+    key[1]:    [128 bytes]
+   child[2]:  [4 bytes idxPageId]
+    ...
+   Pattern: child, key, child, key, child
+    Always one more child than keys
+    c0 k0 c1 k1 c2 k2 c3 k3 c4
+
+     x<k0          c0
+     k0<=x<k1      c1
+     k1<=x<k2      c2
+     k2<=x<k3      c3
+      x>=k3        c4
+ */
+
+// === ./Index/BPlusTree.cpp ===
+//
+// Created by omarabdo on 6/10/26.
+//
+
+#include "../../include/AkatsukiDB/Index/BPlusTree.hpp"
+
+BPlusTree::BPlusTree(const std::string& idxFilePath)
+    : _bufferPool(idxFilePath)
+{
+    if (_bufferPool.TotalPages() == 1) {
+        // First page is the header (page 0). Allocate a root leaf.
+        int rootId = _bufferPool.AllocatePage();
+        auto page = _bufferPool.GetPage(rootId);
+        auto root = BPlusTreeNode::CreateLeaf(page, rootId);
+        SaveNode(root);
+        _rootPageId = rootId;
+        WriteRootPageId(_rootPageId);
+    } else {
+        _rootPageId = ReadRootPageId();
+    }
+}
+
+void BPlusTree::Flush() {
+    _bufferPool.FlushAll();
+}
+
+// ----------------------------------------------------------------------------
+// Node I/O helpers
+// ----------------------------------------------------------------------------
+void BPlusTree::SaveNode(BPlusTreeNode& /*node*/) {
+    // Node's setters already call MarkDirty(), so nothing else required.
+    // The page is owned by the node's shared_ptr; no extra action needed.
+}
+
+BPlusTreeNode BPlusTree::LoadNode(int pageId) {
+    auto page = _bufferPool.GetPage(pageId);
+    return BPlusTreeNode(std::move(page));  // move shared_ptr to avoid refcount increment
+}
+
+void BPlusTree::WriteRootPageId(int rootId) {
+    auto headerPage = _bufferPool.GetPage(0);
+    std::memcpy(headerPage->MutableData() + 10, &rootId, 4);
+    headerPage->MarkDirty();
+}
+
+int BPlusTree::ReadRootPageId() {
+    auto headerPage = _bufferPool.GetPage(0);
+    int rootId;
+    std::memcpy(&rootId, headerPage->MutableData() + 10, 4);
+    return rootId;
+}
+
+BPlusTreeNode BPlusTree::FindLeaf(const IndexKey& key) {
+    auto node = LoadNode(_rootPageId);
+    while (node.GetType() == NodeType::Internal) {
+        node = GetChildNodeForInternal(node, key);
+    }
+    return node;
+}
+
+BPlusTreeNode BPlusTree::GetChildNodeForInternal(const BPlusTreeNode& internal, const IndexKey& key) {
+    int idx = internal.FindKeyIndex(key);
+    int childId;
+    if (idx == internal.GetKeyCount()) {
+        childId = internal.GetChildPageId(idx);
+    } else {
+        auto foundKey = internal.GetKey(idx);
+        if (foundKey==key)
+            childId = internal.GetChildPageId(idx + 1);
+        else
+            childId = internal.GetChildPageId(idx);
+    }
+    return LoadNode(childId);
+}
+
+
+std::vector<std::pair<int, short>> BPlusTree::PointQuery(const IndexKey& key) {
+    std::vector<std::pair<int, short>> result;
+    auto leaf = FindLeaf(key);
+    int idx = leaf.FindKeyIndex(key);
+    while (true) {
+        if (idx >= leaf.GetKeyCount()) {
+            if (leaf.GetNextLeafPageId() == -1) break;
+            leaf = LoadNode(leaf.GetNextLeafPageId());
+            idx = 0;
+        }
+        if (leaf.GetKey(idx)!=key) break;
+        result.push_back(leaf.GetRowLocation(idx));
+        ++idx;
+    }
+    return result;
+}
+
+std::vector<std::pair<int, short>> BPlusTree::RangeQuery(const IndexKey& start, const IndexKey& end) {
+    std::vector<std::pair<int, short>> result;
+    auto leaf = FindLeaf(start);
+    int startIdx = leaf.FindKeyIndex(start);
+    while (true) {
+        for (int i = startIdx; i < leaf.GetKeyCount(); ++i) {
+            auto key = leaf.GetKey(i);
+            if (key>end) return result;
+            result.push_back(leaf.GetRowLocation(i));
+        }
+        startIdx = 0;
+        if (leaf.GetNextLeafPageId() == -1) break;
+        leaf = LoadNode(leaf.GetNextLeafPageId());
+    }
+    return result;
+}
+
+void BPlusTree::Insert(const InsertEntry& entry) {
+    auto root = LoadNode(_rootPageId);
+    auto result = InsertRec(root, entry);
+    if (result) {
+        // root must split as it have no space
+
+        int newRootId = _bufferPool.AllocatePage();
+        auto newRootPage = _bufferPool.GetPage(newRootId);
+        auto newRoot = BPlusTreeNode::CreateInternal(newRootPage, newRootId);
+        newRoot.SetChildPageId(0, _rootPageId); // leftchild is the old root
+        newRoot.SetKey(0, result->key);// promoted key
+        newRoot.SetChildPageId(1, result->pageId); // right child is the new node
+        newRoot.SetKeyCount(1);
+        SaveNode(newRoot);
+        _rootPageId = newRootId;
+        WriteRootPageId(_rootPageId);
+        /*
+              c0 k0 c1  this is the new root
+            */
+    }
+    SaveNode(root);
+}
+
+std::optional<InsertEntry> BPlusTree::InsertRec(BPlusTreeNode& cur, const InsertEntry& entry) {
+
+    if (cur.GetType() == NodeType::Leaf) {
+        if (!cur.IsLeafFull()) {
+            InsertIntoLeaf(cur, entry);
+            return std::nullopt;
+        }
+        return SplitLeaf(cur, entry);
+    }
+
+        auto child = GetChildNodeForInternal(cur, entry.key);
+        auto result = InsertRec(child, entry);
+        if (result) { // then something gonna up must we insert it
+            if (!cur.IsInternalFull()) {
+                InsertIntoInternal(cur, result->key, result->pageId);
+                return std::nullopt;
+            }
+            return SplitInternal(cur, result->key, result->pageId);
+        }
+        return std::nullopt;
+}
+
+void BPlusTree::InsertIntoLeaf(BPlusTreeNode& leaf, const InsertEntry& entry) {
+    int idx = leaf.FindKeyIndex(entry.key);
+    // 30 40 50 60 70  i want to insert 45  lowerbound,45   -> 50  so we need to shift all after 50 one position
+    // 30 40 x 50 60 70  then x is 45
+    // Shift keys and row locations right
+    for (int pos = leaf.GetKeyCount() - 1; pos >= idx; --pos) {
+        leaf.SetKey(pos + 1, leaf.GetKey(pos));
+        auto [pid, slot] = leaf.GetRowLocation(pos);
+        leaf.SetRowLocation(pos + 1, pid, slot);
+    }
+    leaf.SetKey(idx, entry.key);
+    leaf.SetRowLocation(idx, entry.pageId, entry.slotIndex);
+    leaf.SetKeyCount(leaf.GetKeyCount() + 1);
+    leaf.MarkDirty();
+}
+
+InsertEntry BPlusTree::SplitLeaf(BPlusTreeNode& leaf, const InsertEntry& newEntry) {
+    std::vector<InsertEntry> total;
+    for (int i = 0; i < leaf.GetKeyCount(); ++i) {
+        total.push_back({leaf.GetKey(i), leaf.GetRowLocation(i).first, leaf.GetRowLocation(i).second});
+    }
+    total.push_back(newEntry);
+    std::sort(total.begin(), total.end(),
+              [](const InsertEntry& a, const InsertEntry& b) { return a.key < b.key; });
+
+    int mid = total.size() / 2;
+    // Update left (current) leaf
+    for (int i = 0; i < mid; ++i) {
+        leaf.SetKey(i, total[i].key);
+        leaf.SetRowLocation(i, total[i].pageId, total[i].slotIndex);
+    }
+    leaf.SetKeyCount(mid);
+
+    // Create new right leaf
+    int newPageId = _bufferPool.AllocatePage();
+    auto newPage = _bufferPool.GetPage(newPageId);
+    auto newLeaf = BPlusTreeNode::CreateLeaf(newPage, newPageId);
+    for (int i = mid; i < total.size(); ++i) {
+        int idx = i - mid;
+        newLeaf.SetKey(idx, total[i].key);
+        newLeaf.SetRowLocation(idx, total[i].pageId, total[i].slotIndex);
+        newLeaf.SetKeyCount(idx + 1);
+    }
+
+    // Update leaf links
+    newLeaf.SetNextLeafPageId(leaf.GetNextLeafPageId());
+    newLeaf.SetPrevLeafPageId(leaf.GetPageId());
+    leaf.SetNextLeafPageId(newLeaf.GetPageId());
+    if (newLeaf.GetNextLeafPageId() != -1) {
+        auto next = LoadNode(newLeaf.GetNextLeafPageId());
+        next.SetPrevLeafPageId(newLeaf.GetPageId());
+        SaveNode(next);
+    }
+
+    SaveNode(leaf);
+    SaveNode(newLeaf);
+    return {total[mid].key, newLeaf.GetPageId(), total[mid].slotIndex};
+    // middle element will be promoted + pageid because it will be the child
+
+}
+
+void BPlusTree::InsertIntoInternal(BPlusTreeNode& internal, const IndexKey& key, int childPageId) {
+    int idx = internal.FindKeyIndex(key);
+    for (int pos = internal.GetKeyCount() - 1; pos >= idx; --pos)
+        internal.SetKey(pos + 1, internal.GetKey(pos));
+    for (int pos = internal.GetKeyCount(); pos >= idx + 1; --pos)
+        internal.SetChildPageId(pos + 1, internal.GetChildPageId(pos));
+    internal.SetKey(idx, key);
+    internal.SetChildPageId(idx + 1, childPageId);
+    internal.SetKeyCount(internal.GetKeyCount() + 1);
+    internal.MarkDirty();
+}
+
+InsertEntry BPlusTree::SplitInternal(BPlusTreeNode& internal, const IndexKey& key, int childPageId) {
+    std::vector<IndexKey> allKeys;
+    std::vector<int> allChildren;
+    for (int i = 0; i <= internal.GetKeyCount(); ++i)
+        allChildren.push_back(internal.GetChildPageId(i));
+
+    for (int i = 0; i < internal.GetKeyCount(); ++i)
+        allKeys.push_back(internal.GetKey(i));
+
+    int insertPos = internal.FindKeyIndex(key);
+    allKeys.insert(allKeys.begin() + insertPos, key);
+    allChildren.insert(allChildren.begin() + insertPos + 1, childPageId);
+    // should do this so the order of keys and pages do not lost
+
+
+    int mid = allKeys.size() / 2;
+    IndexKey promotedKey = allKeys[mid];
+
+    // Update current internal node (left half)
+    for (int i = 0; i < mid; ++i)
+        internal.SetKey(i, allKeys[i]);
+    for (int i = 0; i <= mid; ++i)
+        internal.SetChildPageId(i, allChildren[i]);
+    internal.SetKeyCount(mid);
+
+    // Create new internal node (right half)
+    int newPageId = _bufferPool.AllocatePage();
+    auto newPage = _bufferPool.GetPage(newPageId);
+    auto newInternal = BPlusTreeNode::CreateInternal(newPage, newPageId);
+    int rightKeyCount = allKeys.size() - mid - 1;
+    for (int i = 0; i < rightKeyCount; ++i)
+        newInternal.SetKey(i, allKeys[mid + 1 + i]);
+    for (int i = 0; i <= rightKeyCount; ++i)
+        newInternal.SetChildPageId(i, allChildren[mid + 1 + i]);
+    newInternal.SetKeyCount(rightKeyCount);
+
+    SaveNode(internal);
+    SaveNode(newInternal);
+    return {promotedKey, newInternal.GetPageId(), 0};
+
+}
+
+bool BPlusTree::Delete(const IndexKey& key) {
+    auto root = LoadNode(_rootPageId);
+    bool deleted = DeleteRec(root, key);
+    if (deleted && root.GetType() == NodeType::Internal && root.GetKeyCount() == 0) {
+        // Empty internal node – promote its only child
+        _rootPageId = root.GetChildPageId(0);
+        WriteRootPageId(_rootPageId);
+    }
+    return deleted;
+}
+
+bool BPlusTree::DeleteRec(BPlusTreeNode& node, const IndexKey& key) {
+    if (node.GetType() == NodeType::Leaf)
+        return DeleteFromLeaf(node, key);
+
+    auto child = GetChildNodeForInternal(node, key);
+    bool deleted = DeleteRec(child, key);
+    if (!deleted) return false;
+
+    int minKeys = (child.GetType() == NodeType::Leaf)
+                  ? BPlusTreeNode::LeafOrder() / 2
+                  : BPlusTreeNode::InternalOrder() / 2;
+
+    if (child.GetKeyCount() >= minKeys)
+        return true;
+
+    int idx = node.FindKeyIndex(key);
+    // Try borrow from left sibling
+    if (idx > 0) {
+        auto leftNeighbour = LoadNode(node.GetChildPageId(idx - 1));
+        if (leftNeighbour.GetKeyCount() > minKeys) {
+            BorrowFromLeft(node, idx, child, leftNeighbour);
+            return true;
+        }
+    }
+    // Try borrow from right sibling
+    if (idx < node.GetKeyCount()) {
+        auto rightNeighbour = LoadNode(node.GetChildPageId(idx + 1));
+        if (rightNeighbour.GetKeyCount() > minKeys) {
+            BorrowFromRight(node, idx, child, rightNeighbour);
+            return true;
+        }
+    }
+    // Merge
+    if (idx > 0)
+        MergeChildren(node, idx - 1);
+    else
+        MergeChildren(node, idx);
+    return true;
+}
+
+bool BPlusTree::DeleteFromLeaf(BPlusTreeNode& leaf, const IndexKey& key) {
+    int idx = leaf.FindKeyIndex(key);
+    if (idx >= leaf.GetKeyCount() || leaf.GetKey(idx).CompareTo(key) != 0)
+        return false;
+
+    for (int pos = idx; pos < leaf.GetKeyCount() - 1; ++pos) {
+        leaf.SetKey(pos, leaf.GetKey(pos + 1));
+        auto [pid, slot] = leaf.GetRowLocation(pos + 1);
+        leaf.SetRowLocation(pos, pid, slot);
+    }
+    leaf.SetKeyCount(leaf.GetKeyCount() - 1);
+    SaveNode(leaf);
+    return true;
+}
+
+void BPlusTree::BorrowFromLeft(BPlusTreeNode& parent, int childIdx, BPlusTreeNode& child, BPlusTreeNode& left) {
+    if (child.GetType() == NodeType::Leaf) {
+        int lastIdx = left.GetKeyCount() - 1;
+        auto borrowKey = left.GetKey(lastIdx);
+        auto [pid, slot] = left.GetRowLocation(lastIdx);
+        // Shift child keys right
+        for (int pos = child.GetKeyCount() - 1; pos >= 0; --pos) {
+            child.SetKey(pos + 1, child.GetKey(pos));
+            auto [p, s] = child.GetRowLocation(pos);
+            child.SetRowLocation(pos + 1, p, s);
+        }
+        child.SetKey(0, borrowKey);
+        child.SetRowLocation(0, pid, slot);
+        child.SetKeyCount(child.GetKeyCount() + 1);
+        left.SetKeyCount(left.GetKeyCount() - 1);
+        parent.SetKey(childIdx - 1, borrowKey); // the key separates left,child is key with idx-1
+    } else {
+            //1-child gets parent key separator the last child from left node and put it in first
+        auto borrowKey = parent.GetKey(childIdx - 1);
+        int lastChild = left.GetChildPageId(left.GetKeyCount());
+        // Shift child right
+        for (int pos = child.GetKeyCount(); pos > 0; --pos)
+            child.SetKey(pos, child.GetKey(pos - 1));
+        for (int pos = child.GetKeyCount() + 1; pos > 0; --pos)
+            child.SetChildPageId(pos, child.GetChildPageId(pos - 1));
+        child.SetKey(0, borrowKey);
+        child.SetChildPageId(0, lastChild);
+        child.SetKeyCount(child.GetKeyCount() + 1);
+        // 2- parent takes the last key from left
+
+        parent.SetKey(childIdx - 1, left.GetKey(left.GetKeyCount() - 1));
+        left.SetKeyCount(left.GetKeyCount() - 1);
+    }
+    SaveNode(parent);
+    SaveNode(child);
+    SaveNode(left);
+}
+
+void BPlusTree::BorrowFromRight(BPlusTreeNode& parent, int childIdx, BPlusTreeNode& child, BPlusTreeNode& right) {
+    if (child.GetType() == NodeType::Leaf) {
+        auto borrowKey = right.GetKey(0);
+        auto [pid, slot] = right.GetRowLocation(0);
+        // Shift right left
+        for (int pos = 0; pos < right.GetKeyCount() - 1; ++pos) {
+            right.SetKey(pos, right.GetKey(pos + 1));
+            auto [p, s] = right.GetRowLocation(pos + 1);
+            right.SetRowLocation(pos, p, s);
+        }
+        child.SetKey(child.GetKeyCount(), borrowKey);
+        child.SetRowLocation(child.GetKeyCount(), pid, slot);
+        child.SetKeyCount(child.GetKeyCount() + 1);
+        right.SetKeyCount(right.GetKeyCount() - 1);
+        parent.SetKey(childIdx, right.GetKey(0));// separator will be the first key in right node
+    } else {
+        // 1- child gets the separator key from parent  and get the first children from right node  and put it in last
+
+        auto borrowKey = parent.GetKey(childIdx);  // key between child and right nodes
+        int firstChild = right.GetChildPageId(0);
+        child.SetKey(child.GetKeyCount(), borrowKey);
+        child.SetChildPageId(child.GetKeyCount() + 1, firstChild);
+        child.SetKeyCount(child.GetKeyCount() + 1);
+            // 2- now the right node delete it first key and first children
+        for (int pos = 0; pos < right.GetKeyCount() - 1; ++pos)
+            right.SetKey(pos, right.GetKey(pos + 1));
+        for (int pos = 0; pos <= right.GetKeyCount() - 1; ++pos)
+            right.SetChildPageId(pos, right.GetChildPageId(pos + 1));
+        right.SetKeyCount(right.GetKeyCount() - 1);
+        //3- parent separator key will be first from the right node
+
+        parent.SetKey(childIdx, right.GetKey(0));
+    }
+    SaveNode(parent);
+    SaveNode(child);
+    SaveNode(right);
+}
+
+void BPlusTree::MergeChildren(BPlusTreeNode& parent, int leftIdx) {
+    auto left = LoadNode(parent.GetChildPageId(leftIdx));
+    auto right = LoadNode(parent.GetChildPageId(leftIdx + 1));
+    // we will merge right into left , remove right
+
+    if (left.GetType() == NodeType::Leaf) {
+        // Merge right leaf into left leaf
+        for (int i = 0; i < right.GetKeyCount(); ++i) {
+            left.SetKey(left.GetKeyCount() + i, right.GetKey(i));
+            auto [pid, slot] = right.GetRowLocation(i);
+            left.SetRowLocation(left.GetKeyCount() + i, pid, slot);
+        }
+        left.SetKeyCount(left.GetKeyCount() + right.GetKeyCount());
+        left.SetNextLeafPageId(right.GetNextLeafPageId());
+        if (right.GetNextLeafPageId() != -1) {
+            auto next = LoadNode(right.GetNextLeafPageId());
+            next.SetPrevLeafPageId(left.GetPageId());
+            SaveNode(next);
+        }
+    } else {
+        // Internal node merge: insert parent separator key
+
+        // last children in left is bounded by last key in left and the separator key parent
+        // last children in left let it be Cl [Kl,Kp] Kl last key in left , Kp separator key parent
+        // so before inserting right child we need to put the separtor key parent to maintain the proper of B+ Tree
+
+        auto separatorKey = parent.GetKey(leftIdx);
+        left.SetKey(left.GetKeyCount(), separatorKey);
+        left.SetChildPageId(left.GetKeyCount() + 1, right.GetChildPageId(0));
+        left.SetKeyCount(left.GetKeyCount() + 1);
+        for (int i = 0; i < right.GetKeyCount(); ++i) {
+            left.SetKey(left.GetKeyCount(), right.GetKey(i));
+            left.SetChildPageId(left.GetKeyCount() + 1, right.GetChildPageId(i + 1));
+            left.SetKeyCount(left.GetKeyCount() + 1);
+        }
+    }
+
+    // Remove separator key and right child from parent
+    for (int i = leftIdx; i < parent.GetKeyCount() - 1; ++i)
+        parent.SetKey(i, parent.GetKey(i + 1));
+    for (int i = leftIdx + 1; i < parent.GetKeyCount(); ++i)
+        parent.SetChildPageId(i, parent.GetChildPageId(i + 1));
+    parent.SetKeyCount(parent.GetKeyCount() - 1);
+
+    SaveNode(left);
+    SaveNode(parent);
+}
+
+// === ./Index/IndexKey.cpp ===
+//
+// Created by omarabdo on 6/10/26.
+//
+
+#include "../../include/AkatsukiDB/Index/IndexKey.hpp"
+
+IndexKey::IndexKey(const std::array<uint8_t, Size> &data):_data(data) {}
+
+IndexKey::IndexKey(std::span<const uint8_t> span) {
+ if (span.size() != Size) throw std::runtime_error("Invalid key size");
+ std::copy(span.begin(), span.end(), _data.begin());
+}
+
+IndexKey::IndexKey():_data{} {}
+
+int IndexKey::CompareTo(const IndexKey &other) const {
+ for (size_t i=0;i<Size;i++) {
+  if (_data[i]<other._data[i]) return -1;
+  if (_data[i]>other._data[i]) return 1;
+ }
+ return 0;
+}
+
+bool IndexKey::operator<(const IndexKey &other) const {
+return CompareTo(other) < 0;
+}
+
+bool IndexKey::operator<=(const IndexKey &other) const {
+return CompareTo(other) <= 0;
+}
+
+bool IndexKey::operator>(const IndexKey &other) const {
+return CompareTo(other) > 0;
+}
+
+bool IndexKey::operator>=(const IndexKey &other) const {
+return CompareTo(other) >= 0;
+}
+
+bool IndexKey::operator==(const IndexKey &other) const {
+return CompareTo(other) == 0;
+}
+
+IndexKey IndexKey::Min() {return IndexKey();}
+
+IndexKey IndexKey::Max() {
+IndexKey result;
+ result._data.fill(0xFF); // 255
+ return result;
+}
+
+IndexKey IndexKey::Max(const IndexKey &a, const IndexKey &b) {
+ return a>=b ? a : b;
+}
+
+IndexKey IndexKey::Min(const IndexKey &a, const IndexKey &b) {
+return a<=b ? a : b;
+}
+
+void IndexKey::WriteValue(int value, size_t &offset) {
+ if (offset + 4 > Size) throw std::runtime_error("IndexKey Overflow");
+
+ //Cast to unsigned to safely manipulate bits
+ uint32_t unsigned_val = static_cast<uint32_t>(value);
+
+ //Flip the sign bit so negative numbers sort before positive numbers
+ unsigned_val ^= (1U<<(31));
+
+ // Convert to Big-Endian
+ unsigned_val = BSWAP_32(unsigned_val);
+
+ std::memcpy(_data.data() + offset, &unsigned_val, 4);
+ offset += 4;
+}
+
+void IndexKey::WriteValue(double value, size_t &offset) {
+ if (offset + 8 > Size) throw std::runtime_error("IndexKey Overflow");
+
+ uint64_t bits;
+ std::memcpy(&bits, &value, 8); // Type Pun
+
+ //Apply the IEEE 754
+ if (bits&(1ULL<<(63))) { // negative
+  //flip ALL bits to reverse the sort order
+  bits = ~bits;
+ } else {
+  // Number is positive , just flip the sign
+  bits ^=(1ULL<<(63));
+ }
+
+ // Convert to Big-Endian
+ bits = BSWAP_64(bits);
+
+ std::memcpy(_data.data() + offset, &bits, 8);
+ offset += 8;
+}
+
+void IndexKey::WriteValue(const std::string &value, size_t &offset) {
+ if (offset + value.size() > Size) throw std::runtime_error("IndexKey Overflow");
+ std::memcpy(_data.data() + offset, value.data(), value.size());
+ offset += value.size();
+}
+
+

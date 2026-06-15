@@ -1,0 +1,1342 @@
+// === ./Statments/IStatement.hpp ===
+#pragma once
+
+class IStatement {
+public:
+    virtual ~IStatement() = default;
+};
+
+// === ./Statments/UpdateStatement.hpp ===
+#pragma once
+
+#include <memory>
+#include <unordered_map>
+
+class UpdateStatement : public IStatement {
+public:
+    std::string TableName;
+    std::unordered_map<std::string, std::unique_ptr<Expression>> Assignments;
+    std::unique_ptr<Expression> Where;
+};
+
+
+// === ./Statments/CreateTableStatement.hpp ===
+#pragma once
+
+#include <string>
+#include <vector>
+
+#include "AkatsukiDB/Table/ColumnDefinition.hpp"
+#include "AkatsukiDB/Table/TableDefinition.hpp"
+
+class CreateTableStatement : public IStatement {
+public:
+    std::string TableName;
+    std::vector<ColumnDefinition> Columns;
+    std::vector<std::string> PrimaryKey;
+    bool AutoIncrement = false;
+    std::vector<ForeignKeyDef> ForeignKeys;
+};
+
+
+// === ./Statments/InsertStatement.hpp ===
+#pragma once
+
+#include "AkatsukiDB/Table/RowSerializer.hpp"
+class InsertStatement : public IStatement {
+public:
+    std::string TableName;
+    std::vector<DbRow> Rows;
+};
+
+// === ./Statments/CreateIndexStatement.hpp ===
+#include <string>
+#include <vector>
+#pragma once
+
+class CreateIndexStatement : public IStatement {
+public:
+ std::string IndexName;
+ std::string TableName;
+ std::vector<std::string> Columns;
+ bool IsUnique = false;
+};
+
+
+// === ./Statments/ShowStatement.hpp ===
+
+#pragma once
+
+#include <optional>
+#include <string>
+
+class ShowStatement : public IStatement {
+public:
+    std::string What;
+    std::optional<std::string> Target;
+};
+
+
+// === ./Statments/SelectStatement.hpp ===
+#include <memory>
+#include <optional>
+#include <vector>
+
+#pragma once
+
+#include "AkatsukiDB/Expressions/Expression.hpp"
+
+struct OrderByClause {
+    std::string Column;
+    bool Descending = false;
+};
+
+
+enum JoinType {
+    Inner,Left,Right
+};
+
+
+struct JoinClause {
+    std::string TableName;
+     std::string Alias=""; // can be empty
+    JoinType Type=Inner;
+    std::unique_ptr<Expression> On;
+};
+
+struct   SelectColumn
+{
+ std::unique_ptr<Expression> Column ;
+std:: string Alias="";
+ bool IsStar= false;
+ bool IsWindow =false;
+ std::string WindowFunc="" ;  // "row_number", "sum"
+ std::vector<std::string> PartitionBy ; // like group by a,b,c
+ std::vector<OrderByClause> WindowOrder ;
+};
+
+class SelectStatement : public IStatement {
+public:
+    std::vector<SelectColumn> Columns;
+    bool IsDistinct = false;
+    std::string TableName;
+     std::string Alias=""; // can be empty
+    std::unique_ptr<Expression> Where;
+
+    int Offset =-1 ; // -1 means is not set
+    int Limit =-1 ;
+
+    std::vector<JoinClause> Joins;
+    std::vector<std::string> GroupBy;
+    std::unique_ptr<Expression> Having;
+    std::vector<OrderByClause> OrderBy;
+};
+
+// === ./Statments/DropTableStatement.hpp ===
+#pragma once
+
+#include <string>
+
+class DropTableStatement : public IStatement {
+public:
+    std::string TableName;
+};
+
+class DropIndexStatement : public IStatement {
+public:
+    std::string IndexName;
+};
+
+class TruncateStatement : public IStatement {
+public:
+    std::string TableName;
+};
+
+// === ./Statments/DeleteStatement.hpp ===
+#pragma once
+
+#include <memory>
+
+#include "IStatement.hpp"
+#include "AkatsukiDB/Expressions/Expression.hpp"
+
+class DeleteStatement : public IStatement {
+public:
+    std::string TableName;
+    std::unique_ptr<Expression> Where;
+};
+
+
+// === ./Table/TableManager.hpp ===
+//
+// Created by omarabdo on 6/9/26.
+//
+#pragma once
+
+#ifndef AKATSUKIDB_CPP_TABLEMANAGER_HPP
+#define AKATSUKIDB_CPP_TABLEMANAGER_HPP
+#include "AkatsukiDB/Storage/BufferPool.hpp"
+
+struct RowEntry {
+    int PageId, SlotIndex;
+    std::vector<uint8_t> Bytes;
+};
+
+class TableManager {
+    std::unique_ptr<BufferPool> _bufferPool;
+    int _rowSizeBytes;
+
+    std::shared_ptr<Page> GetPageWithSpace();
+
+    // span avoid heap copies . just look at the bytes
+    bool IsDeleted(std::span<const uint8_t> rowBytes)const;
+
+public:
+    TableManager(std::unique_ptr<BufferPool> bufferPool,int rowSizeBytes);
+
+    // The unique_ptr automatically cleans up the BufferPool so we do not need a destructor
+
+    std::pair<int,int>InsertRow(std::span<const uint8_t> rowBytes);
+
+    std::vector<RowEntry>FullScan();
+
+    std::vector<uint8_t>ReadRow(int pageId,int slotIndex);
+
+    void UpdateRow(int pageId, int slotIndex, std::span<const uint8_t >newRowBytes);
+
+    void DeleteRow(int pageId, int slotIndex);
+};
+
+
+#endif //AKATSUKIDB_CPP_TABLEMANAGER_HPP
+
+
+// === ./Table/RowSerializer.hpp ===
+//
+// Created by omarabdo on 6/9/26.
+//
+#pragma once
+
+#ifndef AKATSUKIDB_CPP_ROWSERIALIZER_HPP
+#define AKATSUKIDB_CPP_ROWSERIALIZER_HPP
+#include <cstdint>
+#include <span>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+#include "ColumnDefinition.hpp"
+
+class RowSerializer {
+
+public:
+    static std::vector<uint8_t> Serialize(const DbRow& row, const std::vector<ColumnDefinition>& columns, int rowSizeBytes);
+
+    static DbRow Deserialize(std::span<const uint8_t> data, const std::vector<ColumnDefinition>& columns);
+
+    static bool IsDeleted(std::span<const uint8_t> data, int rowSizeBytes);
+    static void MarkDeleted(std::span<uint8_t> data, int rowSizeBytes);
+
+private:
+    static void WriteInt(std::span<uint8_t> s, int v);
+    static int ReadInt(std::span<const uint8_t> s);
+
+    static void WriteDouble(std::span<uint8_t> s, double v);
+    static double ReadDouble(std::span<const uint8_t> s);
+
+    static void WriteString(std::span<uint8_t> s, const std::string& v);
+    static std::string ReadString(std::span<const uint8_t> s);
+
+};
+
+
+#endif //AKATSUKIDB_CPP_ROWSERIALIZER_HPP
+
+
+// === ./Table/TableRegistry.hpp ===
+//
+// Created by omarabdo on 6/9/26.
+//
+#pragma once
+
+#ifndef AKATSUKIDB_CPP_TABLEREGISTRY_HPP
+#define AKATSUKIDB_CPP_TABLEREGISTRY_HPP
+#include <unordered_map>
+#include <vector>
+
+#include "AkatsukiDB/Storage/StorageLayout.hpp"
+#include "AkatsukiDB/Table/TableDefinition.hpp"
+
+
+class TableRegistry {
+
+    StorageLayout& _layout;
+    std::unordered_map<std::string, TableDefinition> _schemas;
+
+    void LoadAllSchemas();
+    std::string Unify(const std::string& s) const;
+    int GetTypeSize(const std::string& type) const;
+
+public:
+
+    explicit TableRegistry(StorageLayout &layout);
+
+    std::vector<std::string> GetAllTableNames() const;
+
+    bool TableExists(const std::string& name) const;
+
+    void DropTable(const std::string& name);
+
+    // Return a const reference! Look, but don't touch, and don't copy!
+    const TableDefinition& GetTable(const std::string& tableName) const;
+
+    const TableDefinition& CreateTable(
+        const std::string& tableName,
+        std::vector<ColumnDefinition> columns,
+        const std::vector<std::string>& primaryKey,
+        bool autoIncrement,
+        const std::vector<ForeignKeyDef>& foreignKeys
+    );
+
+    void SaveTable(const TableDefinition& definition);
+
+};
+
+
+#endif //AKATSUKIDB_CPP_TABLEREGISTRY_HPP
+
+
+// === ./Table/TableDefinition.hpp ===
+//
+// Created by omarabdo on 6/9/26.
+//
+#pragma once // so compiler when include file.hpp which include file2.hpp then include file2.hpp , just include it once
+
+#ifndef AKATSUKIDB_CPP_TABLEDEFINITION_HPP
+#define AKATSUKIDB_CPP_TABLEDEFINITION_HPP
+#include <string>
+#include <vector>
+
+#include "ColumnDefinition.hpp"
+
+#endif //AKATSUKIDB_CPP_TABLEDEFINITION_HPP
+
+enum class OnDelete {
+    RESTRICT,
+    CASCADE
+};
+
+struct ForeignKeyDef {
+    std::string Column;
+    std::string RefTable;
+    std::string RefColumn;
+
+    OnDelete OnDeleteAction = OnDelete::RESTRICT;
+};
+
+
+struct IndexDefinition {
+    std::string Name;
+    std::vector<std::string> Columns;
+    bool IsUnique = false;
+    bool IsPrimary = false;
+};
+
+
+struct TableDefinition {
+    std::string Name;
+    int RowSizeBytes = 0;
+    std::vector<ColumnDefinition> Columns;
+    std::vector<std::string> PrimaryKey;
+    bool AutoIncrement = false;
+    int NextAutoValue = 1;
+    std::vector<ForeignKeyDef> ForeignKeys;
+    std::vector<IndexDefinition> Indexes;
+};
+
+// === ./Table/ColumnDefinition.hpp ===
+//
+// Created by omarabdo on 6/9/26.
+//
+#pragma once
+
+#ifndef AKATSUKIDB_CPP_COLUMNDEFINITION_HPP
+#define AKATSUKIDB_CPP_COLUMNDEFINITION_HPP
+#include <optional>
+#include <string>
+#include <unordered_map>
+#include <variant>
+
+using DbObject = std::variant<std::monostate,int,double,std::string,bool>; // like Object in C#
+using DbRow = std::unordered_map<std::string, DbObject>;
+
+#endif //AKATSUKIDB_CPP_COLUMNDEFINITION_HPP
+struct  ColumnDefinition {
+ std::string Name;
+ std::string Type ;// int float str bool
+ int Offset=0 ;// where it start in the row -> id , name , age ...
+ int Size=0;
+ bool Nullable = true;
+ bool IsUnique  = false;
+ std::optional<DbObject> Default = std::nullopt;
+};
+
+// === ./AQL/Executor.hpp ===
+//
+// Created by omarabdo on 6/11/26.
+//
+
+#ifndef AKATSUKIDB_CPP_EXECUTOR_HPP
+#define AKATSUKIDB_CPP_EXECUTOR_HPP
+
+
+#pragma once
+
+#include "AkatsukiDB/Storage/StorageLayout.hpp"
+#include "AkatsukiDB/Table/TableRegistry.hpp"
+#include "AkatsukiDB/Table/TableManager.hpp"
+#include "AkatsukiDB/Table/TableDefinition.hpp"
+#include "AkatsukiDB/Index/BPlusTree.hpp"
+#include <memory>
+#include <unordered_map>
+#include <vector>
+#include <string>
+#include <optional>
+
+#include "QueryValidatorAndBinder.hpp"
+#include "AkatsukiDB/Engine/QueryResult.hpp"
+#include "AkatsukiDB/Statments/CreateIndexStatement.hpp"
+#include "AkatsukiDB/Statments/CreateTableStatement.hpp"
+#include "AkatsukiDB/Statments/DeleteStatement.hpp"
+#include "AkatsukiDB/Statments/DropTableStatement.hpp"
+#include "AkatsukiDB/Statments/InsertStatement.hpp"
+#include "AkatsukiDB/Statments/IStatement.hpp"
+#include "AkatsukiDB/Statments/SelectStatement.hpp"
+#include "AkatsukiDB/Statments/ShowStatement.hpp"
+#include "AkatsukiDB/Statments/UpdateStatement.hpp"
+
+
+static std::string DbObjectToString(const DbObject& obj) {
+ if (std::holds_alternative<std::monostate>(obj)) return "NULL";
+ if (std::holds_alternative<int>(obj)) return std::to_string(std::get<int>(obj));
+ if (std::holds_alternative<double>(obj)) return std::to_string(std::get<double>(obj));
+ if (std::holds_alternative<std::string>(obj)) return std::get<std::string>(obj);
+ if (std::holds_alternative<bool>(obj)) return std::get<bool>(obj) ? "true" : "false";
+ return "???";
+}
+
+class Executor {
+public:
+    // Type aliases for maps passed from AkatsukiEngine
+    using TableManagerMap = std::unordered_map<std::string, std::unique_ptr<TableManager>>;
+    using IndexMap = std::unordered_map<std::string, std::vector<std::pair<IndexDefinition, std::unique_ptr<BPlusTree>>>>;
+    using ReferencedByMap = std::unordered_map<std::string, std::vector<std::pair<std::string, ForeignKeyDef>>>;
+
+    explicit Executor(TableRegistry& registry,
+             StorageLayout& layout,
+             TableManagerMap& tables,
+             IndexMap& indexes,
+             ReferencedByMap& referencedBy);
+
+    QueryResult Execute(IStatement& stmt);
+
+private:
+    // Statement executors
+    QueryResult ExecuteSelect(SelectStatement& stmt);
+    QueryResult ExecuteInsert(InsertStatement& stmt);
+    QueryResult ExecuteUpdate(UpdateStatement& stmt);
+    QueryResult ExecuteDelete(DeleteStatement& stmt);
+    QueryResult ExecuteCreateTable(CreateTableStatement& stmt);
+    QueryResult ExecuteCreateIndex(CreateIndexStatement& stmt);
+    QueryResult ExecuteDropTable(DropTableStatement& stmt);
+    QueryResult ExecuteTruncate(TruncateStatement& stmt);
+    QueryResult ExecuteShow(ShowStatement& stmt);
+
+   QueryResult ShowSchema(const std::string& tableName);
+    QueryResult ShowIndexes(const std::string& tableName);
+     QueryResult ShowTables();
+
+
+     // Helpers
+     IndexKey BuildKeyForTree(const std::unordered_map<std::string, DbObject>& row,
+                              const std::vector<std::string>& columns);
+
+      void OpenTable(const std::string& name);
+
+    // For Expressions
+     bool EvaluateBool(Expression& expr, const std::unordered_map<std::string, DbObject>& row);
+
+     DbObject GetValue(Expression& expr, const std::unordered_map<std::string, DbObject>& row);
+
+     bool Compare(const DbObject& left, const std::string& op, const DbObject& right);
+
+    int CompareAny(const DbObject& a, const DbObject& b);
+
+     bool AreEqual(const DbObject& a, const DbObject& b);
+
+     DbObject Calculate(const DbObject& a, const std::string& op, const DbObject& b);
+
+     bool TryDouble(const DbObject& v, double& result);
+
+    bool LikeMatch(const std::string& s, const std::string& pattern);
+
+    bool RecLike(int i, int j, const std::string& s, const std::string& pattern,
+                 std::unordered_map<std::string, bool>& dp);
+
+
+     // Reference members (non‑owning)
+     TableRegistry& _registry;
+     StorageLayout& _layout;
+     TableManagerMap& _tables;
+     IndexMap& _indexes;
+     ReferencedByMap& _referencedBy;
+
+    // Helper objects
+     QueryValidatorAndBinder _validator;
+};
+
+
+#endif //AKATSUKIDB_CPP_EXECUTOR_HPP
+
+
+// === ./AQL/Tokenizer.hpp ===
+//
+// Created by omarabdo on 6/11/26.
+//
+
+#pragma once
+
+
+#ifndef AKATSUKIDB_CPP_TOKENIZER_HPP
+#define AKATSUKIDB_CPP_TOKENIZER_HPP
+#include <string>
+#include <unordered_set>
+#include <vector>
+
+enum class TokenType {
+    Keyword, Identifier, Operator, IntLiteral, FloatLiteral, StringLiteral, BooleanLiteral,
+    NullLiteral, Comma, Colon, Dot, Star, LParen, RParen, LBrace, RBrace, LBracket, RBracket, EOF_
+};
+
+class Token {
+public:
+    Token(TokenType type, std::string value, int line);
+
+    TokenType GetType() const { return _type; }
+    const std::string& GetValue() const { return _value; }
+    int GetLine() const { return _line; }
+
+    std::string ToString() const;
+
+private:
+    TokenType _type;
+    std::string _value;
+    int _line;
+};
+
+class Tokenizer {
+public:
+
+    explicit Tokenizer(const std::string& input);
+
+    std::vector<Token> Tokenize();
+
+private:
+    std::string _input;
+    size_t _pos;
+    int _line;
+
+    static const std::unordered_set<std::string>& GetKeywords();
+
+    void SkipWhitespaceAndComments();
+    Token ReadIdentifierOrKeyword();
+    Token ReadString(char quote);
+    Token ReadNumber();
+};
+
+
+#endif //AKATSUKIDB_CPP_TOKENIZER_HPP
+
+
+// === ./AQL/QueryValidatorAndBinder.hpp ===
+//
+// Created by omarabdo on 6/11/26.
+//
+#pragma  once
+
+#ifndef AKATSUKIDB_CPP_QUERYVALIDATORANDBINDER_HPP
+#define AKATSUKIDB_CPP_QUERYVALIDATORANDBINDER_HPP
+#include <optional>
+#include <string>
+
+#include "AkatsukiDB/Statments/DeleteStatement.hpp"
+#include "AkatsukiDB/Statments/SelectStatement.hpp"
+#include "AkatsukiDB/Statments/UpdateStatement.hpp"
+#include "AkatsukiDB/Table/TableRegistry.hpp"
+
+
+class QueryValidatorAndBinder {
+public:
+    explicit QueryValidatorAndBinder(TableRegistry& registry);
+
+    // Returns error message or nullopt on success
+    std::optional<std::string> ValidateSelect(SelectStatement& stmt);
+    std::optional<std::string> ValidateUpdate(UpdateStatement& stmt);
+    std::optional<std::string> ValidateDelete(DeleteStatement& stmt);
+
+private:
+    TableRegistry& _registry;
+
+    // Builds a map: column name -> table name (or "ambiguous")
+    std::unordered_map<std::string, std::string> BuildAvailable(
+        const std::string& mainTable,
+        const std::optional<std::string>& mainAlias,
+        const std::vector<JoinClause>& joins);
+
+    void AddTable(const std::string& tableName,
+                  const std::optional<std::string>& alias,
+                  std::unordered_map<std::string, std::string>& available);
+
+    std::optional<std::string> ValidateExpression(Expression& expr,
+        const std::unordered_map<std::string, std::string>& available);
+};
+
+#endif //AKATSUKIDB_CPP_QUERYVALIDATORANDBINDER_HPP
+
+
+// === ./AQL/Parser.hpp ===
+//
+// Created by omarabdo on 6/11/26.
+//
+#pragma once
+
+#ifndef AKATSUKIDB_CPP_PARSER_HPP
+#define AKATSUKIDB_CPP_PARSER_HPP
+#include <memory>
+#include <stdexcept>
+#include <unordered_map>
+#include <vector>
+
+#include "AkatsukiDB/AQL/Tokenizer.hpp"
+#include "AkatsukiDB/Expressions/Expression.hpp"
+#include "AkatsukiDB/Statments/IStatement.hpp"
+#include "AkatsukiDB/Statments/SelectStatement.hpp"
+#include "AkatsukiDB/Table/RowSerializer.hpp"
+
+
+class Parser {
+public:
+    class ParseException : public std::runtime_error {
+    public:
+        explicit ParseException(const std::string& msg) : std::runtime_error(msg) {}
+    };
+
+    std::unique_ptr<IStatement> Parse(const std::vector<Token>& tokens);
+
+private:
+    std::vector<Token> _tokens;
+    size_t _pos = 0;
+
+    const Token& Current() const { return _tokens[_pos]; }
+
+    const Token& Peek(int offset = 1) const {
+        size_t idx = _pos + offset;
+        return idx < _tokens.size() ? _tokens[idx] : _tokens.back();
+    }
+    bool IsAtEnd() const { return _pos >= _tokens.size() || Current().GetType() == TokenType::EOF_; }
+
+    bool Match(const std::string& value);
+    void Expect(const std::string& value);
+    Token Expect(TokenType type);
+    std::string ExpectName();
+
+    // Statement parsers
+    std::unique_ptr<IStatement> ParseCreate();
+    std::unique_ptr<IStatement> ParseCreateIndex(bool unique);
+    std::unique_ptr<IStatement> ParseCreateTable();
+    std::unique_ptr<IStatement> ParseDelete();
+    std::unique_ptr<IStatement> ParseDrop();
+    std::unique_ptr<IStatement> ParseTruncate();
+    std::unique_ptr<IStatement> ParseInsert();
+    std::unique_ptr<IStatement> ParseSelect();
+    std::unique_ptr<IStatement> ParseShow();
+    std::unique_ptr<IStatement> ParseUpdate();
+
+    // Helpers for Insert
+    std::vector<DbRow> ParseInsertRows();
+    DbRow ParseRow();
+
+    // Expression parsing
+    std::unique_ptr<Expression> ParseExpression();
+    std::unique_ptr<Expression> ParseOr();
+    std::unique_ptr<Expression> ParseAnd();
+    std::unique_ptr<Expression> ParseNot();
+    std::unique_ptr<Expression> ParseComparison();
+    std::unique_ptr<Expression> ParseAddSubExpression();
+    std::unique_ptr<Expression> ParseMulDivExpression();
+    std::unique_ptr<Expression> ParseTerm();
+    DbObject ParseLiteralValue();
+    std::unique_ptr<Expression> ParseFunction();
+
+    // Select helpers
+    std::vector<SelectColumn> ParseSelectColumn();
+    bool IsJoinStart() const;
+    JoinClause ParseJoin();
+    std::vector<std::string> ParseGroupBy();
+    std::vector<OrderByClause> ParseOrderBy();
+};
+
+
+#endif //AKATSUKIDB_CPP_PARSER_HPP
+
+
+// === ./Storage/LruCache.hpp ===
+//
+// Created by omarabdo on 6/7/26.
+//
+#pragma once
+
+#ifndef AKATSUKIDB_CPP_LRUCACHE_HPP
+#define AKATSUKIDB_CPP_LRUCACHE_HPP
+#include <functional>
+#include <memory>
+#include <unordered_map>
+
+#include "Page.hpp"
+
+
+class LruCache {
+
+    struct Node {
+      int pageId;
+        Node* next;
+        Node* prev;
+        std::shared_ptr<Page> page;
+        Node();
+        Node(int pageId,std::shared_ptr<Page>p):
+        page(std::move(p)), next(nullptr), prev(nullptr),pageId(pageId) {}
+    };
+
+    int _capacity;
+
+    std::unordered_map<int,std::unique_ptr<Node> > cache;
+
+    Node* head;
+    Node* tail;
+
+    void AddFront(Node * node);
+    void Remove(Node* node);
+
+public:
+    std::function<void(std::shared_ptr<Page>)> OnEvict;
+
+    explicit LruCache(int capacity);
+    ~LruCache();
+
+    std::shared_ptr<Page> Get(int pageId);
+
+    void Put(int pageId, std::shared_ptr<Page> page);
+
+    std::vector<std::shared_ptr<Page>> Pages() const;
+
+};
+
+
+#endif //AKATSUKIDB_CPP_LRUCACHE_HPP
+
+
+// === ./Storage/StorageLayout.hpp ===
+//
+// Created by omarabdo on 6/7/26.
+//
+#pragma once
+
+#ifndef AKATSUKIDB_CPP_STORAGELAYOUT_HPP
+#define AKATSUKIDB_CPP_STORAGELAYOUT_HPP
+#include <filesystem>
+#include <string>
+
+
+class StorageLayout {
+
+    std::filesystem::path _root;
+
+    void CreateFolders() const;
+
+public:
+    explicit StorageLayout(const std::string& rootDirectory);
+
+    std::string TablesFolder() const;
+    std::string IndexFolder() const;
+    std::string SchemaFolder() const;
+    std::string WalFolder() const;
+
+    std::string TableFile(const std::string& tableName) const;
+    std::string IndexFile(const std::string& indexName) const;
+    std::string SchemaFile(const std::string& tableName) const;
+    std::string WalFile() const;
+
+};
+
+
+#endif //AKATSUKIDB_CPP_STORAGELAYOUT_HPP
+
+
+// === ./Storage/BufferPool.hpp ===
+//
+// Created by omarabdo on 6/7/26.
+//
+#pragma once
+
+#ifndef AKATSUKIDB_CPP_BUFFERPOOL_HPP
+#define AKATSUKIDB_CPP_BUFFERPOOL_HPP
+#include <memory>
+
+#include "LruCache.hpp"
+#include "Page.hpp"
+#include "PageManager.hpp"
+#include "PageManager.hpp"
+
+constexpr size_t MaxCapacity = 256;
+
+class BufferPool {
+    PageManager _pageManager;
+    LruCache _cache;
+
+public:
+
+    explicit BufferPool(const std::string& dbFilePath);
+
+    ~BufferPool();
+
+    int TotalPages() const;
+
+    int AllocatePage();
+
+    std::shared_ptr<Page> GetPage(int pageId);
+
+    void FlushAll();
+};
+
+
+#endif //AKATSUKIDB_CPP_BUFFERPOOL_HPP
+
+
+// === ./Storage/PageManager.hpp ===
+//
+// Created by omarabdo on 6/7/26.
+//
+#pragma once
+
+#ifndef AKATSUKIDB_CPP_PAGEMANGER_HPP
+#define AKATSUKIDB_CPP_PAGEMANGER_HPP
+#include <fstream>
+#include <memory>
+#include <string>
+
+#include "Page.hpp"
+
+
+class PageManager {
+
+    std::fstream _stream;
+    std::string _filepath;
+    int _totalPages;
+   void InitializeNewFile();
+
+public:
+
+    PageManager(const std::string &filepath);
+
+    ~PageManager(); // to destroy the object
+
+    int AllocatePage();
+    int TotalPages() const;
+
+    std::unique_ptr<Page> ReadPage(int pageId);
+
+    void WritePage(Page& page);
+};
+
+
+#endif //AKATSUKIDB_CPP_PAGEMANGER_HPP
+
+
+// === ./Storage/Page.hpp ===
+//
+// Created by omarabdo on 6/7/26.
+//
+#pragma once
+
+#ifndef AKATSUKIDB_CPP_PAGE_HPP
+#define AKATSUKIDB_CPP_PAGE_HPP
+#include <cstdint>
+#include <span>
+#include <vector>
+
+constexpr size_t PAGE_SIZE = 4096;
+
+class Page {
+
+    std::vector<uint8_t> _data;
+    bool _isDirty =false;
+    int _pageId;
+    template<typename T> T Read(size_t offset) const;
+    template<typename T> void Write(size_t offset, T value);
+
+    public:
+    Page(int pageId, std::vector<uint8_t> data);
+
+    bool isDirty() const ;
+
+    const std::vector<uint8_t>& Data() const;
+
+    int GetPageId() const;
+    void SetPageId(int pageId);
+
+    short GetSlotCount() const;
+    void SetSlotCount(short slotCount);
+
+    int GetFreeOffset() const;
+    void SetFreeOffset(int freeOffset);
+
+    int GetNextPageId() const;
+    void SetNextPageId(int nextPageId);
+
+    std::span<uint8_t> GetSlot(int slotIndex, int rowSize);
+
+    void MarkDirty();
+    void ClearDirty();
+
+   uint8_t* MutableData();
+};
+
+
+
+
+#endif //AKATSUKIDB_CPP_PAGE_HPP
+
+
+// === ./Engine/AkatsukiEngine.hpp ===
+//
+// Created by omarabdo on 6/11/26.
+//
+
+#pragma once
+
+#ifndef AKATSUKIDB_CPP_AKATSUKIENGINE_HPP
+#define AKATSUKIDB_CPP_AKATSUKIENGINE_HPP
+#include <memory>
+#include <string>
+
+#include "QueryResult.hpp"
+#include "AkatsukiDB/AQL/Executor.hpp"
+#include "AkatsukiDB/Index/BPlusTree.hpp"
+#include "AkatsukiDB/Table/TableManager.hpp"
+#include "AkatsukiDB/Table/TableRegistry.hpp"
+
+
+class AkatsukiEngine {
+public:
+    explicit AkatsukiEngine(const std::string& dataDirectory);
+    ~AkatsukiEngine();
+
+    QueryResult Execute(const std::string& aql);
+
+    void Dispose();
+
+private:
+    std::unique_ptr<StorageLayout> _layout;
+    std::unique_ptr<TableRegistry> _registry;
+    std::unique_ptr<Executor> _executor;
+
+    // table name -> TableManager
+    std::unordered_map<std::string, std::unique_ptr<TableManager>> _tables;
+
+    // table name -> list of (index def, BPlusTree)
+    std::unordered_map<std::string,std::vector<std::pair<IndexDefinition,std::unique_ptr<BPlusTree>>>> _indexes;
+
+    // reverse FK: referenced table -> list of (fromTable, fkDef)
+   std::unordered_map<std::string, std::vector<std::pair<std::string, ForeignKeyDef>>>_referencedBy;
+
+    void OpenTable(const std::string& name);
+    void BuildReferencedByMap();
+    void CloseTable(const std::string& name);
+};
+
+#endif //AKATSUKIDB_CPP_AKATSUKIENGINE_HPP
+
+
+// === ./Engine/QueryResult.hpp ===
+//
+// Created by omarabdo on 6/11/26.
+//
+#pragma once
+
+#ifndef AKATSUKIDB_CPP_QUERYRESULT_HPP
+#define AKATSUKIDB_CPP_QUERYRESULT_HPP
+#include <optional>
+#include <string>
+
+#include "AkatsukiDB/Table/RowSerializer.hpp"
+
+class QueryResult {
+public:
+    bool IsError = false;
+    std::optional<std::string> ErrorMessage;
+    std::vector<std::string> Columns;
+    std::vector<DbRow> Rows;
+    int RowsAffected = 0;
+    std::optional<std::string> PlanUsed;
+
+    static QueryResult Error(const std::string& message);
+    static QueryResult Success(const std::vector<std::string>& cols,
+                               std::vector<DbRow> rows);
+    static QueryResult Affected(int count, const std::optional<std::string>& plan = std::nullopt);
+};
+
+
+
+#endif //AKATSUKIDB_CPP_QUERYRESULT_HPP
+
+
+// === ./Index/BPlusTree.hpp ===
+//
+// Created by omarabdo on 6/10/26.
+//
+#pragma once
+
+#ifndef AKATSUKIDB_CPP_BPLUSTREE_HPP
+#define AKATSUKIDB_CPP_BPLUSTREE_HPP
+#include <optional>
+#include <string>
+#include <vector>
+
+#include "BPlusTreeNode.hpp"
+#include "IndexKey.hpp"
+#include "AkatsukiDB/Storage/BufferPool.hpp"
+
+
+class BPlusTree{
+public:
+    explicit BPlusTree(const std::string& idxFilePath);
+    ~BPlusTree() = default;
+
+    // Queries
+    std::vector<std::pair<int, short>> PointQuery(const IndexKey& key);
+    std::vector<std::pair<int, short>> RangeQuery(const IndexKey& start, const IndexKey& end);
+
+    void Insert(const InsertEntry& entry);
+    bool Delete(const IndexKey& key);
+
+    // Flush all dirty pages
+    void Flush();
+
+private:
+    BufferPool _bufferPool;
+    int _rootPageId;
+
+    void SaveNode(BPlusTreeNode& node);
+    BPlusTreeNode LoadNode(int pageId);
+    void WriteRootPageId(int rootId);
+    int ReadRootPageId();
+
+    BPlusTreeNode FindLeaf(const IndexKey& key); // find the leaf contains this key
+    BPlusTreeNode GetChildNodeForInternal(const BPlusTreeNode& internal, const IndexKey& key);
+    //from internal node get the child contains this key
+
+    // for Insertion
+    std::optional<InsertEntry> InsertRec(BPlusTreeNode& cur, const InsertEntry& entry);
+    void InsertIntoLeaf(BPlusTreeNode& leaf, const InsertEntry& entry);
+    void InsertIntoInternal(BPlusTreeNode& internal, const IndexKey& key, int childPageId);
+    InsertEntry SplitLeaf(BPlusTreeNode& leaf, const InsertEntry& newEntry);
+    InsertEntry SplitInternal(BPlusTreeNode& internal, const IndexKey& key, int childPageId);
+
+    // for Deletion
+    bool DeleteRec(BPlusTreeNode& node, const IndexKey& key);
+    bool DeleteFromLeaf(BPlusTreeNode& leaf, const IndexKey& key);
+    void BorrowFromLeft(BPlusTreeNode& parent, int childIdx, BPlusTreeNode& child, BPlusTreeNode& left);
+    void BorrowFromRight(BPlusTreeNode& parent, int childIdx, BPlusTreeNode& child, BPlusTreeNode& right);
+    void MergeChildren(BPlusTreeNode& parent, int leftIdx);
+};
+
+
+#endif //AKATSUKIDB_CPP_BPLUSTREE_HPP
+
+
+// === ./Index/IndexKey.hpp ===
+//
+// Created by omarabdo on 6/10/26.
+//
+#pragma once
+
+#ifndef AKATSUKIDB_CPP_INDEXKEY_HPP
+#define AKATSUKIDB_CPP_INDEXKEY_HPP
+#include <array>
+#include <cstdint>
+#include <cstring>
+#include <span>
+#include <stdexcept>
+
+#include "AkatsukiDB/Table/ColumnDefinition.hpp"
+
+
+#ifdef _MSC_VER
+    #include <stdlib.h>
+    #define BSWAP_32 _byteswap_ulong
+    #define BSWAP_64 _byteswap_uint64
+#else
+    #define BSWAP_32 __builtin_bswap32
+    #define BSWAP_64 __builtin_bswap64
+#endif
+
+
+// ----------------------------------------------------------------------------
+// IndexKey – fixed 128‑byte key, comparable, stores int/double/string in big‑endian
+// ----------------------------------------------------------------------------
+
+class IndexKey {
+public:
+    static constexpr size_t Size = 128;
+
+    explicit IndexKey(const std::array<uint8_t, Size>& data);
+
+    explicit IndexKey(std::span<const uint8_t> span);
+
+    // (for compile‑time known arguments)
+    template<typename... Args>
+    explicit IndexKey(Args... args) : _data{} {
+        size_t offset = 0;
+        (WriteValue(args, offset), ...);
+        if (offset > Size) throw std::runtime_error("IndexKey OVERFLOW");
+    }
+
+    //(runtime collection)
+    explicit IndexKey(std::span<const DbObject> values) : _data{} {
+        size_t offset = 0;
+        for (const auto& val : values) {
+            if (std::holds_alternative<int>(val)) {
+                WriteValue(std::get<int>(val), offset);
+            } else if (std::holds_alternative<double>(val)) {
+                WriteValue(std::get<double>(val), offset);
+            } else if (std::holds_alternative<std::string>(val)) {
+                WriteValue(std::get<std::string>(val), offset);
+            } else if (std::holds_alternative<bool>(val)) {
+                WriteValue(static_cast<int>(std::get<bool>(val)), offset);
+            } else if (std::holds_alternative<std::monostate>(val)) {
+                if (offset + 1 > Size) throw std::runtime_error("IndexKey overflow (NULL marker)");
+                _data[offset++] = 0x00;
+            } else {
+                throw std::runtime_error("Unsupported DbObject type for IndexKey");
+            }
+        }
+        if (offset > Size) throw std::runtime_error("IndexKey OVERFLOW");
+    }
+
+    IndexKey();
+
+    const std::array<uint8_t, Size>& Data() const { return _data; }
+
+    int CompareTo(const IndexKey& other) const;
+
+    bool operator<(const IndexKey& other) const ;
+    bool operator<=(const IndexKey& other) const ;
+    bool operator>(const IndexKey& other) const ;
+    bool operator>=(const IndexKey& other) const ;
+    bool operator==(const IndexKey& other) const ;
+
+    static IndexKey Min();
+    static IndexKey Max();
+    static IndexKey Max(const IndexKey& a, const IndexKey& b);
+    static IndexKey Min(const IndexKey& a, const IndexKey& b);
+
+private:
+    std::array<uint8_t, Size> _data;
+
+    void WriteValue(int value, size_t& offset);
+    void WriteValue(double value, size_t& offset);
+    void WriteValue(const std::string& value, size_t& offset);
+};
+
+
+#endif //AKATSUKIDB_CPP_INDEXKEY_HPP
+
+
+// === ./Index/BPlusTreeNode.hpp ===
+//
+// Created by omarabdo on 6/10/26.
+//
+#pragma once
+
+#ifndef AKATSUKIDB_CPP_BPLUSTREENODE_HPP
+#define AKATSUKIDB_CPP_BPLUSTREENODE_HPP
+#include <memory>
+
+#include "IndexKey.hpp"
+#include "AkatsukiDB/Storage/Page.hpp"
+
+
+enum class NodeType : uint8_t {Internal = 0,Leaf = 1}; // 1 byte
+
+struct InsertEntry {IndexKey key;int pageId;short slotIndex;};
+
+// wrapper for the 4096 byte page , every node is page !!
+class BPlusTreeNode {
+public:
+    static constexpr int PageSize = 4096;
+    static constexpr int KeySize = IndexKey::Size;
+    static constexpr int PageIdSize = 4;
+    static constexpr int SlotIndexSize = 2;
+    static constexpr int ChildSize = 4;
+    static constexpr int DataStart = 20;                  // header size
+
+    static constexpr int InternalEntrySize = KeySize + ChildSize;
+    static constexpr int LeafEntrySize = KeySize + PageIdSize + SlotIndexSize;
+
+    static int InternalOrder() { return (PageSize - DataStart) / InternalEntrySize; } //  M which has M children + M-1 keys
+    static int LeafOrder()     { return (PageSize - DataStart) / LeafEntrySize; }
+
+    explicit BPlusTreeNode(std::shared_ptr<Page> page);
+
+        static BPlusTreeNode CreateLeaf(std::shared_ptr<Page> page, int pageId);
+    static BPlusTreeNode CreateInternal(std::shared_ptr<Page> page, int pageId);
+
+    NodeType GetType() const;
+    void SetType(NodeType type);
+
+    short GetKeyCount() const;
+    void SetKeyCount(short count);
+
+    int GetParentPageId() const;
+    void SetParentPageId(int pid);
+
+    int GetNextLeafPageId() const;
+    void SetNextLeafPageId(int pid);
+
+    int GetPrevLeafPageId() const;
+    void SetPrevLeafPageId(int pid);
+
+    int GetPageId() const;
+    void SetPageId(int pid);
+
+    // Key access
+    IndexKey GetKey(int index) const;
+    void SetKey(int index, const IndexKey& key);
+
+    // Lower bound search
+    int FindKeyIndex(const IndexKey& key) const;
+
+    bool IsLeafFull() const;
+    std::pair<int, short> GetRowLocation(int index) const;
+    void SetRowLocation(int index, int pageId, short slotIndex);
+
+    bool IsInternalFull() const;
+    int GetChildPageId(int index) const;
+    void SetChildPageId(int index, int childPageId);
+
+    void MarkDirty();
+    void ClearDirty();
+
+    std::shared_ptr<Page> GetPage() const { return _page; }
+
+private:
+    std::shared_ptr<Page> _page; // instead of saving the bytes again in this class we just have a pointer where to it its location in the heap
+};
+
+
+#endif //AKATSUKIDB_CPP_BPLUSTREENODE_HPP
+
+
+// === ./Expressions/Expression.hpp ===
+//
+// Created by omarabdo on 6/10/26.
+//
+#pragma once
+
+#ifndef AKATSUKIDB_CPP_EXPRESSION_HPP
+#define AKATSUKIDB_CPP_EXPRESSION_HPP
+#include <memory>
+#include <string>
+#include <vector>
+
+#include "AkatsukiDB/Table/ColumnDefinition.hpp"
+
+#endif //AKATSUKIDB_CPP_EXPRESSION_HPP
+
+class Expression {
+public:
+   virtual  ~Expression()=default;
+};
+
+
+ class BinaryExpr : public Expression
+{
+ public:
+ std::unique_ptr<Expression> Left;
+ std::string Op; // = != > < >= <= AND OR
+std::unique_ptr<Expression>Right ;
+};
+
+
+class Literal : public Expression
+{
+ public:
+  DbObject Value;
+};
+
+
+
+ class ColumnRef : public Expression
+{
+ public:
+  std::string Column ;
+  std::optional<std::string> TableName; // can be empty (null)
+};
+
+ class UnaryExpr : public Expression
+{
+ public:
+  std::unique_ptr<Expression> Operand;
+std::string Op ; // NOT
+
+};
+
+ class FunctionExpr : public Expression
+{
+ public:
+std:: string Name ; // avg , min , func , etc..
+ std::vector<std::unique_ptr<Expression>> Arguments ; // avg(a+b) , min(a*b+c)
+};
+
+ class IsNullExpr : public Expression
+{
+ public:
+  std::unique_ptr<Expression> Value ;
+ bool Not ;
+};
+
+ class BetweenExpr : public Expression
+{
+ public:
+  std::unique_ptr<Expression> Value ;
+std::unique_ptr<Expression>  Lower ;
+std::unique_ptr<Expression>  Upper ;
+};
+
+ class InExpr : public Expression
+{
+ public :
+  std::unique_ptr<Expression> Value  ;
+std::vector<std::unique_ptr<Expression>>Values ;
+};
+
+ class LikeExpr : public Expression
+{
+ public:
+   std::unique_ptr<Expression>  Value  ;
+std::unique_ptr<Expression>     Pattern;
+  // i can make both string because this the most cases but for more flexibility making both as expressing it also good
+};
+
+
+

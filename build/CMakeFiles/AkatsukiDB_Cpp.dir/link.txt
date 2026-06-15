@@ -1,0 +1,1 @@
+/usr/bin/c++ CMakeFiles/AkatsukiDB_Cpp.dir/cli/main.cpp.o -o AkatsukiDB_Cpp  libAkatsukiDB_lib.a _deps/replxx-build/libreplxx.a 
