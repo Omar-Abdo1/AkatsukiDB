@@ -52,14 +52,13 @@ void Executor::OpenTable(const std::string& name) {
     std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), ::tolower);
     const auto& def = _registry.GetTable(lowerName);
 
-    auto bp = std::make_unique<BufferPool>(_layout.TableFile(lowerName));
+    std::unique_ptr<BufferPool> bp = std::make_unique<BufferPool>(_layout.TableFile(lowerName));
 
     _tables[lowerName] = std::make_unique<TableManager>(std::move(bp), def.RowSizeBytes);
 
-    _indexes[lowerName] = std::vector<std::pair<IndexDefinition, std::unique_ptr<BPlusTree>>>();
     for (const auto& idxDef : def.Indexes) {
         std::string idxPath = _layout.IndexFile(idxDef.Name);
-        auto tree = std::make_unique<BPlusTree>(idxPath);
+         std::unique_ptr<BPlusTree> tree = std::make_unique<BPlusTree>(idxPath);
         _indexes[lowerName].emplace_back(idxDef, std::move(tree));
     }
 }
@@ -77,44 +76,45 @@ IndexKey Executor::BuildKeyForTree(const std::unordered_map<std::string, DbObjec
     return IndexKey(std::span<const DbObject>(values));
 }
 
-std::vector<RowEntry> Executor::GetRowEntries(TableManager& tm,
+std::vector<DbRow> Executor::GetRowEntries(TableManager& tm,
     const TableDefinition& def, const ScanPlan& plan)
 {
+    std::vector<RowEntry> entries;
+
     if (plan.Type == ScanType::Point && plan.Index) {
         auto locs = plan.Index->PointQuery(plan.PointKey);
-        std::vector<RowEntry> result;
         for (auto& [pid, slot] : locs) {
             auto bytes = tm.ReadRow(pid, slot);
-            result.push_back({pid, slot, std::move(bytes)});
+            entries.push_back({pid, slot, std::move(bytes)});
         }
-        return result;
-    }
-
-    if (plan.Type == ScanType::Range && plan.Index) {
-        auto locs = plan.Index->RangeQuery(plan.RangeStart, plan.RangeEnd);
-        std::vector<RowEntry> result;
+    } else if (plan.Type == ScanType::Range && plan.Index) {
+        auto locs = plan.Index->RangeQuery(plan.RangeStart, plan.RangeEnd,
+                                           plan.RangeStartOpen, plan.RangeEndOpen);
         for (auto& [pid, slot] : locs) {
             auto bytes = tm.ReadRow(pid, slot);
-            // handle open bounds
-            if (plan.RangeStartOpen || plan.RangeEndOpen) {
-                auto row = RowSerializer::Deserialize(bytes, def.Columns);
-                // skip if at open boundary
-                // (the EvaluateBool filter will handle this)
-            }
-            result.push_back({pid, slot, std::move(bytes)});
+            entries.push_back({pid, slot, std::move(bytes)});
         }
-        return result;
+    } else {
+        entries = tm.FullScan();
     }
 
-    return tm.FullScan();
+    // Deserialize and apply post‑scan filters
+    std::vector<DbRow> filtered;
+    for (auto& entry : entries) {
+        auto row = RowSerializer::Deserialize(entry.Bytes, def.Columns);
+        if (PassesFilter(row, plan))
+            filtered.push_back(std::move(row));
+    }
+    return filtered;
 }
 
 bool Executor::PassesFilter(const DbRow& row, const ScanPlan& plan) {
-    if (plan.FilterAfter)
-        return EvaluateBool(*plan.FilterAfter, row);
+    for (auto* expr : plan.FilterAfter) {
+        if (!EvaluateBool(*expr, row))
+            return false;
+    }
     return true;
 }
-
 
 // Executor for SHOW statements
 QueryResult Executor::ExecuteShow(ShowStatement& stmt) {

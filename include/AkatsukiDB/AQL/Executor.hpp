@@ -82,8 +82,8 @@ private:
       void OpenTable(const std::string& name);
 
     // for delete/updata/select to get the rows from where expression
- std::vector<RowEntry> GetRowEntries(TableManager& tm,
-    const TableDefinition& def, const ScanPlan& plan);
+    std::vector<DbRow> GetRowEntries(TableManager& tm,
+        const TableDefinition& def, const ScanPlan& plan);
 
  bool PassesFilter(const DbRow& row, const ScanPlan& plan);
 
@@ -94,10 +94,21 @@ private:
  bool HasDependents(const std::string& fromTable,
      const std::string& fkCol, const DbObject& pkVal);
 
+    std::optional<std::string> CanDelete(
+    const std::string& tableName,
+    const DbRow& row,
+    const TableDefinition& def);
+
+    void DoDelete(const std::string& name,
+    const RowEntry& entry, const DbRow& row,
+    const TableDefinition& def);
+
 
     // for select
- void PrefixRow(DbRow& target, const DbRow& source,
-                   const std::string& table, const std::string& alias);
+    void PrefixRow(DbRow& target,
+                   const DbRow& source,
+                   const std::string& table,
+                   const std::optional<std::string>& alias);
 
  std::vector<DbRow> HashJoin(
      const std::vector<DbRow>& left,
@@ -156,7 +167,7 @@ private:
     bool LikeMatch(const std::string& s, const std::string& pattern);
 
     bool RecLike(int i, int j, const std::string& s, const std::string& pattern,
-                 std::unordered_map<std::string, bool>& dp);
+                 std::vector<std::vector<int>>& dp);
 
 
      // Reference members (non‑owning)
@@ -168,7 +179,7 @@ private:
 
     // Helper objects
      QueryValidatorAndBinder _validator;
-    ScanPlanner _scanPlanner;
+     ScanPlanner _scanPlanner;
 };
 
 
