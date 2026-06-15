@@ -7,6 +7,7 @@
 // ExecuteDelete.cpp
 #include "AkatsukiDB/AQL/Executor.hpp"
 
+// Fixed ExecuteDelete — check THEN delete:
 QueryResult Executor::ExecuteDelete(DeleteStatement& stmt) {
     auto err = _validator.ValidateDelete(stmt);
     if (err) return QueryResult::Error(*err);
@@ -21,6 +22,10 @@ QueryResult Executor::ExecuteDelete(DeleteStatement& stmt) {
     auto plan    = _scanPlanner.Decide(name, stmt.Where.get());
     auto entries = GetRowEntries(tm, def, plan);
 
+    // ── PHASE 1: verify ALL rows can be deleted ───────────────────
+    // touch NOTHING until we know the entire operation is valid
+    std::vector<std::pair<RowEntry*, DbRow>> toDelete;
+
     for (auto& entry : entries) {
         auto row = RowSerializer::Deserialize(entry.Bytes, def.Columns);
 
@@ -28,22 +33,64 @@ QueryResult Executor::ExecuteDelete(DeleteStatement& stmt) {
         if (plan.Type == ScanType::Full && stmt.Where)
             if (!EvaluateBool(*stmt.Where, row)) continue;
 
-        // FK dependent check
-        auto fkErr = CheckDependents(name, row, def);
-        if (fkErr) return QueryResult::Error(*fkErr);
+        // CHECK — does the entire cascade chain allow deletion?
+        auto checkErr = CanDelete(name, row, def);
+        if (checkErr) return QueryResult::Error(*checkErr);
 
-        // soft delete in .tbl
-        tm.DeleteRow(entry.PageId, entry.SlotIndex);
+        toDelete.push_back({&entry, std::move(row)});
+    }
 
-        // physical delete from all indexes
-        if (_indexes.count(name))
-            for (auto& [idxDef, tree] : _indexes[name]) {
-                auto key = BuildKeyForTree(row, idxDef.Columns);
-                tree->Delete(key);
-            }
+    // ── PHASE 2: all checks passed — now actually delete ──────────
+    for (auto& [entryPtr, row] : toDelete) {
+        DoDelete(name, *entryPtr, row, def);
         ++count;
     }
+
     return QueryResult::Affected(count);
+}
+
+void Executor::DoDelete(const std::string& name,
+    const RowEntry& entry, const DbRow& row,
+    const TableDefinition& def)
+{
+    // handle cascades first (delete dependents before parent)
+    auto it = _referencedBy.find(name);
+    if (it != _referencedBy.end()) {
+        for (auto& [fromTable, fk] : it->second) {
+            if (fk.OnDeleteAction != OnDelete::CASCADE) continue;
+
+            DbObject pkVal;
+            for (const auto& pk : def.PrimaryKey) {
+                if (pk == fk.RefColumn) {
+                    auto rowIt = row.find(pk);
+                    if (rowIt != row.end()) pkVal = rowIt->second;
+                    break;
+                }
+            }
+
+            const auto& fromDef = _registry.GetTable(fromTable);
+            auto& fromTm        = *_tables[fromTable];
+            auto fromEntries    = fromTm.FullScan();
+
+            for (auto& e : fromEntries) {
+                auto depRow = RowSerializer::Deserialize(e.Bytes, fromDef.Columns);
+                auto colIt  = depRow.find(fk.Column);
+                if (colIt == depRow.end()) continue;
+                if (!AreEqual(colIt->second, pkVal)) continue;
+                DoDelete(fromTable, e, depRow, fromDef); // recurse
+            }
+        }
+    }
+
+    // soft delete in .tbl
+    _tables[name]->DeleteRow(entry.PageId, entry.SlotIndex);
+
+    // physical delete from all indexes
+    if (_indexes.count(name))
+        for (auto& [idxDef, tree] : _indexes[name]) {
+            auto key = BuildKeyForTree(row, idxDef.Columns);
+            tree->Delete(key);
+        }
 }
 
 std::optional<std::string> Executor::CheckDependents(
@@ -123,4 +170,57 @@ bool Executor::HasDependents(const std::string& fromTable,
             return true;
     }
     return false;
+}
+
+// Split into two functions:
+// 1. CanDelete — pure check, touches nothing
+// 2. DoDelete  — actual deletion, only called if CanDelete passed
+
+std::optional<std::string> Executor::CanDelete(
+    const std::string& tableName,
+    const DbRow& row,
+    const TableDefinition& def)
+{
+    auto it = _referencedBy.find(tableName);
+    if (it == _referencedBy.end()) return std::nullopt;
+
+    for (auto& [fromTable, fk] : it->second) {
+        // get PK value
+        DbObject pkVal;
+        bool found = false;
+        for (const auto& pk : def.PrimaryKey) {
+            if (pk == fk.RefColumn) {
+                auto rowIt = row.find(pk);
+                if (rowIt != row.end()) { pkVal = rowIt->second; found = true; }
+                break;
+            }
+        }
+        if (!found) continue;
+
+        if (!HasDependents(fromTable, fk.Column, pkVal)) continue;
+
+        if (fk.OnDeleteAction == OnDelete::RESTRICT)
+            return "FK violation: '" + tableName + "' referenced by '"
+                 + fromTable + "." + fk.Column + "'. Cannot delete.";
+
+        // CASCADE: recursively check all dependents too
+        if (fk.OnDeleteAction == OnDelete::CASCADE) {
+            // get all dependent rows and check THEIR dependents
+            const auto& fromDef = _registry.GetTable(fromTable);
+            auto& fromTm        = *_tables[fromTable];
+            auto fromEntries    = fromTm.FullScan();
+
+            for (auto& e : fromEntries) {
+                auto depRow = RowSerializer::Deserialize(e.Bytes, fromDef.Columns);
+                auto colIt  = depRow.find(fk.Column);
+                if (colIt == depRow.end()) continue;
+                if (!AreEqual(colIt->second, pkVal)) continue;
+
+                // recursively check if THIS dependent can be deleted
+                auto err = CanDelete(fromTable, depRow, fromDef);
+                if (err) return err; // propagate error up
+            }
+        }
+    }
+    return std::nullopt; // all good
 }

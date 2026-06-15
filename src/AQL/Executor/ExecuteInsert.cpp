@@ -38,9 +38,10 @@ QueryResult Executor::ExecuteInsert(InsertStatement& stmt) {
 
         // Apply defaults
         for (const auto& col : def.Columns) {
-            if (col.Default && (!rowDict.count(col.Name) || std::holds_alternative<std::monostate>(rowDict[col.Name]))) {
+            if (col.Default.has_value() &&
+                (!rowDict.count(col.Name) || std::holds_alternative<std::monostate>(rowDict[col.Name]))) {
                 rowDict[col.Name] = *col.Default;
-            }
+                }
         }
 
         // Auto-increment
@@ -113,6 +114,19 @@ QueryResult Executor::ExecuteInsert(InsertStatement& stmt) {
             auto& idxTree = *idxList[i].second;
             auto key = BuildKeyForTree(rowDict, def.Indexes[i].Columns);
             idxTree.Insert({key, pageId, static_cast<short>(slotIndex)});
+        }
+
+        if (mutableDef.AutoIncrement) {
+            const std::string& pk = mutableDef.PrimaryKey[0];
+            auto it = rowDict.find(pk);
+            if (it != rowDict.end() && !std::holds_alternative<std::monostate>(it->second)) {
+                // Explicit primary key value provided
+                int providedId = std::get<int>(it->second);
+                if (providedId >= mutableDef.NextAutoValue) {
+                    mutableDef.NextAutoValue = providedId + 1;
+                    _registry.SaveTable(mutableDef);
+                }
+            }
         }
 
         ++count;

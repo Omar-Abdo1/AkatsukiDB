@@ -217,30 +217,34 @@ DbObject Executor::Calculate(const DbObject& a, const std::string& op, const DbO
 // Like pattern matching (recursive with memoization)
 // ----------------------------------------------------------------------------
 bool Executor::LikeMatch(const std::string& s, const std::string& pattern) {
-    std::unordered_map<std::string, bool> dp;
+    std::vector<std::vector<int>>dp;
+    dp=std::vector<std::vector<int>>(s.size()+1,std::vector<int>(pattern.size()+1,-1));
     return RecLike(0, 0, s, pattern, dp);
 }
 
 bool Executor::RecLike(int i, int j, const std::string& s, const std::string& pattern,
-                       std::unordered_map<std::string, bool>& dp) {
-    std::string key = std::to_string(i) + "," + std::to_string(j);
-    if (dp.find(key) != dp.end()) return dp[key];
+                       std::vector<std::vector<int>>& dp) {
+
     if (i == (int)s.size()) {
-        // End of string: pattern must be consumed or only % left
         while (j < (int)pattern.size() && pattern[j] == '%') ++j;
-        return dp[key] = (j == (int)pattern.size());
+        return  (j == (int)pattern.size());
     }
-    if (j == (int)pattern.size()) return dp[key] = false;
+
+    if (j == (int)pattern.size()) return false;
+
+    int &ret = dp[i][j];
+    if (~ret)return ret;
 
     if (pattern[j] == '%') {
         for (int k = i; k <= (int)s.size(); ++k) {
             if (RecLike(k, j+1, s, pattern, dp))
-                return dp[key] = true;
+                return ret = true;
         }
-        return dp[key] = false;
     }
+
     if (pattern[j] == '?' || pattern[j] == s[i]) {
-        return dp[key] = RecLike(i+1, j+1, s, pattern, dp);
+        return ret = RecLike(i+1, j+1, s, pattern, dp);
     }
-    return dp[key] = false;
+
+    return ret =  false;
 }
