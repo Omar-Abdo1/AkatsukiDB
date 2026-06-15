@@ -37,12 +37,12 @@ std::string Token::ToString() const {
 
 const std::unordered_set<std::string>& Tokenizer::GetKeywords() {
     static const std::unordered_set<std::string> keywords = {
-        "select", "from", "where", "insert", "into", "update", "show", "schema", "tables", "indexes", "triggers",
+        "select", "from", "where", "insert", "into", "update", "show", "schema", "tables", "indexes", "triggers","truncate",
         "delete", "create", "table", "drop", "alter", "pk", "fk",
         "on", "index", "auto", "not", "true", "false", "and", "or",
         "cascade", "restrict", "join", "left", "right", "inner", "order",
         "by", "asc", "desc", "group", "having", "limit", "in", "between", "like", "distinct",
-        "over", "partition", "row_number", "sum", "count", "avg", "min", "max", "begin", "commit", "rollback"
+        "over", "partition", "row_number", "sum", "count", "avg", "min", "max", "begin", "commit", "rollback","int","float","str"
     };
     return keywords;
 }

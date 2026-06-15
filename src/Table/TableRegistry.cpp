@@ -48,7 +48,7 @@ namespace nlohmann {
             }
 
             json tmp;
-            ::to_json(tmp, *opt);
+            ::to_json(tmp, opt.value());
             j = tmp;
         }
 
@@ -96,9 +96,9 @@ void TableRegistry::LoadAllSchemas() {
             std::ifstream file(entry.path());
 
             nlohmann::json j;
-            file >> j;
+            file >> j; // read the json file
 
-            TableDefinition schema = j.get<TableDefinition>();
+            TableDefinition schema = j.get<TableDefinition>(); // Deserialize
             _schemas[schema.Name] = std::move(schema);
         }
     }
@@ -107,7 +107,7 @@ void TableRegistry::LoadAllSchemas() {
 void TableRegistry::SaveTable(const TableDefinition& definition) {
     std::string path = _layout.SchemaFile(definition.Name);
 
-    nlohmann::json j = definition;
+    nlohmann::json j = definition; // Serialize convert the cpp object into json
 
     std::ofstream file(path);
     file << j.dump(4); // 4 spaces for every indentation level
@@ -195,7 +195,8 @@ bool TableRegistry::TableExists(const std::string& name) const {
 }
 
 void TableRegistry::DropTable(const std::string& name) {
-    _schemas.erase(Unify(name));
+    // executor remove the physical files
+    _schemas.erase(Unify(name)); // remove from in-memory map
 }
 
 int TableRegistry::GetTypeSize(const std::string& type) const {
@@ -203,7 +204,7 @@ int TableRegistry::GetTypeSize(const std::string& type) const {
     if (t == "int") return 4;
     if (t == "float") return 8;
     if (t == "bool") return 1;
-    if (t == "str") return 104;
+    if (t == "str") return 104; // 4 for length + 100 byte for the string itself
 
     throw std::invalid_argument("Unsupported type: " + type);
 }

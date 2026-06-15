@@ -60,11 +60,11 @@ void LruCache::Put(int pageId, std::shared_ptr<Page> page) {
             OnEvict(LruNode->page);
         }
         Remove(LruNode);
-        cache.erase(LruNode->pageId);
+        cache.erase(LruNode->pageId); // remove also the unique poninter
     }
     auto newNode = std::make_unique<Node>(pageId, page);
     Node* rawPointer = newNode.get();
-    cache[pageId] = std::move(newNode);
+    cache[pageId] = std::move(newNode); // transfer the OwnerShip
     AddFront(rawPointer);
 }
 

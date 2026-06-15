@@ -19,9 +19,9 @@ std::shared_ptr<Page> TableManager::GetPageWithSpace() {
     int lastPageId = _bufferPool->TotalPages() - 1;
     auto page = _bufferPool->GetPage(lastPageId);
 
-    int usedSpace = 16 + (page->GetSlotCount() * _rowSizeBytes);
+    int usedSpace = PAGE_HEADER + (page->GetSlotCount() * _rowSizeBytes);
 
-    int remainingSpace = 4096 - usedSpace;
+    int remainingSpace = PAGE_SIZE - usedSpace;
 
     if (remainingSpace >= _rowSizeBytes)
         return page;
@@ -40,9 +40,10 @@ std::shared_ptr<Page> TableManager::GetPageWithSpace() {
 }
 
 bool TableManager::IsDeleted(std::span<const uint8_t> rowBytes) const {
-    return rowBytes[_rowSizeBytes-10] == 1;
+    return rowBytes[_rowSizeBytes-1] == 1;
 }
 
+// table manger resposible for it own bufferbool so it is unique and we transfer the ownership so when TableManger got deleted bufferpool die
 
 TableManager::TableManager(std::unique_ptr<BufferPool> bufferPool, int rowSizeBytes)
     : _bufferPool(std::move(bufferPool)), _rowSizeBytes(rowSizeBytes){}
@@ -61,8 +62,6 @@ std::pair<int, int> TableManager::InsertRow(std::span<const uint8_t> rowBytes) {
     page->SetSlotCount(slotIdx + 1);
     page->SetFreeOffset(page->GetFreeOffset() + _rowSizeBytes);
     page->MarkDirty();
-
-    _bufferPool->FlushAll();
 
     return {page->GetPageId(), slotIdx};
 }
@@ -102,15 +101,13 @@ void TableManager::UpdateRow(int pageId, int slotIndex, std::span<const uint8_t>
     std::memcpy(slotSpan.data(), newRowBytes.data(), _rowSizeBytes);
 
     page->MarkDirty();
-    _bufferPool->FlushAll();
 }
 
 void TableManager::DeleteRow(int pageId, int slotIndex) {
     auto page = _bufferPool->GetPage(pageId);
     auto slotSpan = page->GetSlot(slotIndex, _rowSizeBytes);
 
-    slotSpan[_rowSizeBytes - 10] = 1;
+    slotSpan[_rowSizeBytes - 1] = 1; // soft delete
 
     page->MarkDirty();
-    _bufferPool->FlushAll();
 }

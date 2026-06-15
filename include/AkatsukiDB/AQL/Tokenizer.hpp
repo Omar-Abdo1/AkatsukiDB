@@ -38,13 +38,14 @@ public:
     explicit Tokenizer(const std::string& input);
 
     std::vector<Token> Tokenize();
+        static const std::unordered_set<std::string>& GetKeywords();
+
 
 private:
     std::string _input;
     size_t _pos;
     int _line;
 
-    static const std::unordered_set<std::string>& GetKeywords();
 
     void SkipWhitespaceAndComments();
     Token ReadIdentifierOrKeyword();
