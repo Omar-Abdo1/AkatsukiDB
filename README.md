@@ -645,6 +645,35 @@ SHOW INDEXES employees
 | GROUP BY 100k rows          | XXX ms     | XXX ms   |
 
 
+## Design Decisions : 
+
+A clustered primary index (storing full row data directly in B+ Tree
+leaves, as SQLite does for rowid tables) was considered. It would
+remove one disk hop for primary-key lookups at the cost of complicating
+secondary index lookups (which would need a second traversal through
+the primary tree) and variable-length row updates. The current
+non-clustered design was kept for this version; clustering is a
+candidate v2 architecture change.
+
+Non-clustered (what we have):
+  B+ Tree leaf: [key][pageId][slotIndex]
+  Lookup = 1 tree descent + 1 separate page fetch from .tbl
+  Pro: secondary indexes are cheap, just (key → location) pairs
+  Con: every lookup is two hops
+
+Clustered :
+  B+ Tree leaf: [key][entire row bytes]
+  Lookup = 1 tree descent, row is RIGHT THERE in the leaf
+  Pro: primary key lookups need exactly one hop — this is why
+       SQLite's PK lookups are so fast
+  Con: secondary indexes can't point into the .tbl anymore (there
+       is no .tbl) — they either duplicate the whole row (wasteful)
+       or store the PK and require a SECOND lookup through the
+       primary tree (what InnoDB actually does)
+  Con: row size changes (UPDATE growing a string) get awkward
+       inside a fixed-size leaf slot — needs overflow handling
+
+
 ## Planned
 
 - [ ] MVCC snapshot isolation
