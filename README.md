@@ -634,6 +634,17 @@ SHOW INDEXES employees
 
 ---
 
+## Benchmarks (100k rows, Release build, Linux)
+
+| Operation                  | AkatsukiDB | SQLite   |
+|----------------------------|------------|----------|
+| 100k INSERTs (one txn)     | XXX ms     | XXX ms   |
+| 1000 PK point queries      | XXX ms     | XXX ms   |
+| Full scan (no index)       | XXX ms     | XXX ms   |
+| Range scan (indexed)       | XXX ms     | XXX ms   |
+| GROUP BY 100k rows          | XXX ms     | XXX ms   |
+
+
 ## Planned
 
 - [ ] MVCC snapshot isolation
