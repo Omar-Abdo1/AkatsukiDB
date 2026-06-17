@@ -34,6 +34,106 @@ SQL Query
 ```
 
 ---
+## Project Structure
+
+```
+AkatsukiDB/
+├── CMakeLists.txt
+├── README.md
+│
+├── include/AkatsukiDB/
+│   ├── AQL/
+│   │   ├── Tokenizer.hpp              # hand-written lexer
+│   │   ├── Parser.hpp                 # recursive descent → AST
+│   │   ├── QueryValidatorAndBinder.hpp# column binding, ambiguity checks
+│   │   ├── ScanPlanner.hpp            # FullScan/PointQuery/RangeScan decision
+│   │   └── Executor.hpp               # statement execution
+│   │
+│   ├── Engine/
+│   │   ├── AkatsukiEngine.hpp         # top-level entry point, owns everything
+│   │   └── QueryResult.hpp            # unified result type
+│   │
+│   ├── Expressions/
+│   │   └── Expression.hpp             # AST node definitions
+│   │
+│   ├── Statments/
+│   │   ├── IStatement.hpp
+│   │   ├── CreateTableStatement.hpp
+│   │   ├── CreateIndexStatement.hpp
+│   │   ├── InsertStatement.hpp
+│   │   ├── SelectStatement.hpp
+│   │   ├── UpdateStatement.hpp
+│   │   ├── DeleteStatement.hpp
+│   │   ├── DropTableStatement.hpp
+│   │   ├── ShowStatement.hpp
+│   │   └── TransactionStatements.hpp  # BEGIN / COMMIT / ROLLBACK
+│   │
+│   ├── WAL/
+│   │   ├── WalManager.hpp             # append-only log, fsync durability
+│   │   └── TransactionManager.hpp     # txn tracking, undo log
+│   │
+│   ├── Storage/
+│   │   ├── Page.hpp                   # 4096-byte page
+│   │   ├── PageManager.hpp            # raw file I/O
+│   │   ├── LruCache.hpp               # O(1) LRU eviction
+│   │   ├── BufferPool.hpp             # page cache layer
+│   │   └── StorageLayout.hpp          # centralised file paths
+│   │
+│   ├── Table/
+│   │   ├── ColumnDefinition.hpp
+│   │   ├── TableDefinition.hpp
+│   │   ├── TableRegistry.hpp          # schema JSON load/save
+│   │   ├── TableManager.hpp           # row CRUD on disk
+│   │   └── RowSerializer.hpp          # binary row encode/decode + null bitmap
+│   │
+│   └── Index/
+│       ├── IndexKey.hpp               # 128-byte composite key
+│       ├── BPlusTreeNode.hpp
+│       └── BPlusTree.hpp              # insert/delete/point/range query
+│
+├── src/                               # mirrors include/, one .cpp per .hpp
+│   ├── AQL/
+│   │   ├── Tokenizer.cpp
+│   │   ├── Parser.cpp
+│   │   ├── QueryValidatorAndBinder.cpp
+│   │   ├── ScanPlanner.cpp
+│   │   └── Executor/
+│   │       ├── Executor.cpp           # shared helpers (PrefixRow, HashJoin...)
+│   │       ├── ExecuteCreate.cpp
+│   │       ├── ExecuteInsert.cpp
+│   │       ├── ExecuteSelect.cpp
+│   │       ├── ExecuteUpdate.cpp
+│   │       ├── ExecuteDelete.cpp
+│   │       ├── ExecuteDrop.cpp
+│   │       └── ExecuteExpression.cpp  # GetValue, EvaluateBool, Compare
+│   ├── Engine/
+│   │   ├── AkatsukiEngine.cpp
+│   │   └── QueryResult.cpp
+│   ├── WAL/
+│   │   ├── WalManager.cpp
+│   │   └── TransactionManager.cpp
+│   ├── Storage/
+│   │   ├── Page.cpp
+│   │   ├── PageManager.cpp
+│   │   ├── LruCache.cpp
+│   │   ├── BufferPool.cpp
+│   │   └── StorageLayout.cpp
+│   ├── Table/
+│   │   ├── RowSerializer.cpp
+│   │   ├── TableManager.cpp
+│   │   └── TableRegistry.cpp
+│   └── Index/
+│       ├── IndexKey.cpp
+│       ├── BPlusTreeNode.cpp
+│       └── BPlusTree.cpp
+│
+├── cli/
+│   └── main.cpp                       # REPL — replxx, syntax highlighting
+│
+└── benchmark/
+    └── benchmark.cpp                  # AkatsukiDB vs SQLite timing comparison
+```
+
 
 ## Storage Engine
 
