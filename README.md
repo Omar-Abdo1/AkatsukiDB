@@ -634,15 +634,45 @@ SHOW INDEXES employees
 
 ---
 
-## Benchmarks (100k rows, Release build, Linux)
 
-| Operation                  | AkatsukiDB | SQLite   |
-|----------------------------|------------|----------|
-| 100k INSERTs (one txn)     | XXX ms     | XXX ms   |
-| 1000 PK point queries      | XXX ms     | XXX ms   |
-| Full scan (no index)       | XXX ms     | XXX ms   |
-| Range scan (indexed)       | XXX ms     | XXX ms   |
-| GROUP BY 100k rows          | XXX ms     | XXX ms   |
+
+## Benchmarks (10k rows, Release build, [Intel(R) Core(TM) i5-8250U CPU @ 1.60GHz])
+
+| Operation                     | AkatsukiDB | SQLite   | Notes                                  |
+|-------------------------------|------------|----------|------------------------------------------|
+| 10k INSERTs (no explicit txn) | 6622 ms    | 33212 ms | SQLite fsyncs per implicit txn here     |
+| PK point query x1000          | 714 ms     | 47.6 ms  | per-call SQL re-parse (see Limitations) |
+| Full scan, 66% selectivity    | 108 ms     | 0.84 ms  | DbRow allocation overhead (see Limitations)|
+| Indexed scan, 66% selectivity | 146 ms     | 0.057 ms | non-selective predicate — sequential scan is the theoretically correct choice here too |
+| GROUP BY 10k rows             | 188 ms     | 35.6 ms  |                                          |
+
+## Performance Notes & Limitations
+
+- **No prepared-statement API.** Every `Execute(sql)` call re-tokenizes
+  and re-parses the full SQL string. This is the dominant cost in the
+  point-query benchmark above; SQLite's comparison loop reuses one
+  prepared statement and only rebinds a parameter. A real `Prepare`/bind
+  API is planned for v2.
+
+- **`DbRow` uses `unordered_map<std::string, DbObject>`.** Flexible and
+  simple to reason about, but every row deserialized allocates a map
+  plus a heap string per column key. This dominates full-table-scan and
+  GROUP BY cost. A typed, columnar row representation is a planned v2
+  change.
+
+- **Rule-based scan planner, not cost-based.** If an index exists on a
+  WHERE column, it is always used — there is no selectivity estimation.
+  For a low-selectivity predicate (matching most of the table), a real
+  cost-based planner like PostgreSQL's would choose a sequential scan
+  instead, the same way this engine's full scan can occasionally beat
+  its own index scan for non-selective queries.
+
+- **Insert benchmark compares against SQLite's default rollback-journal
+  mode**, which performs two fsyncs and a journal file create/delete per
+  transaction. AkatsukiDB's single append-only WAL file with one fsync
+  per commit is architecturally cheaper in this specific comparison;
+  SQLite in WAL journal mode would likely outperform it.
+
 
 
 ## Design Decisions : 
