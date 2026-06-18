@@ -10,8 +10,10 @@
 #include <filesystem>
 #include <algorithm>
 #include <stdexcept>
+#include <unordered_set>
 #include <vector>
 #include <nlohmann/json.hpp>
+//
 
 void to_json(nlohmann::json& j, const DbObject& obj) {
     if (std::holds_alternative<int>(obj)) {
@@ -115,7 +117,7 @@ void TableRegistry::SaveTable(const TableDefinition& definition) {
     _schemas[definition.Name] = definition;
 }
 
-const TableDefinition& TableRegistry::CreateTable(
+ TableDefinition& TableRegistry::CreateTable(
     const std::string& tableName,
     std::vector<ColumnDefinition> columns,
     const std::vector<std::string>& primaryKey,
@@ -124,6 +126,14 @@ const TableDefinition& TableRegistry::CreateTable(
 {
     std::string unifiedName = Unify(tableName);
     int currentOffset = 0;
+
+    std::unordered_set<std::string> colSet;
+    for (const auto& col : columns) {
+        if (colSet.count(col.Name))
+            throw std::runtime_error("Duplicate column name: " + col.Name);
+        colSet.insert(col.Name);
+    }
+
 
     std::vector<ColumnDefinition> processedColumns = columns;
     for (auto& col : processedColumns) {
@@ -169,14 +179,19 @@ const TableDefinition& TableRegistry::CreateTable(
     return _schemas[unifiedName];
 }
 
+TableDefinition& TableRegistry::GetTable(const std::string& tableName) {
+    std::string unified = Unify(tableName);
+    auto it = _schemas.find(unified);
+    if (it == _schemas.end())
+        throw std::runtime_error("Table '" + tableName + "' does not exist.");
+    return it->second;
+}
+
 const TableDefinition& TableRegistry::GetTable(const std::string& tableName) const {
     std::string unified = Unify(tableName);
-
     auto it = _schemas.find(unified);
-    if (it == _schemas.end()) {
+    if (it == _schemas.end())
         throw std::runtime_error("Table '" + tableName + "' does not exist.");
-    }
-
     return it->second;
 }
 

@@ -15,6 +15,7 @@
 #include "AkatsukiDB/AQL/Parser.hpp"
 #include "AkatsukiDB/AQL/Executor.hpp"
 #include <filesystem>
+#include <iostream>
 
 
 AkatsukiEngine::AkatsukiEngine(const std::string& dataDirectory) {
@@ -47,6 +48,33 @@ QueryResult AkatsukiEngine::Execute(const std::string& aql) {
         return QueryResult::Error(ex.what());
     }
 }
+
+// QueryResult AkatsukiEngine::Execute(const std::string& sql) {
+//     auto t0 = std::chrono::high_resolution_clock::now();
+//     Tokenizer tokenizer(sql);
+//     auto tokens = tokenizer.Tokenize();
+//     auto t1 = std::chrono::high_resolution_clock::now();
+//
+//     Parser parser;
+//     auto stmt = parser.Parse(tokens);
+//     auto t2 = std::chrono::high_resolution_clock::now();
+//
+//     auto result = _executor->Execute(*stmt); // validate+plan+scan all happen inside
+//     auto t3 = std::chrono::high_resolution_clock::now();
+//
+//     static long long tok=0, par=0, exe=0; static int n=0;
+//     tok += std::chrono::duration_cast<std::chrono::microseconds>(t1-t0).count();
+//     par += std::chrono::duration_cast<std::chrono::microseconds>(t2-t1).count();
+//     exe += std::chrono::duration_cast<std::chrono::microseconds>(t3-t2).count();
+//     if (++n == 1000) {
+//         std::cerr << "avg per call (us): tokenize=" << tok/n
+//                   << " parse=" << par/n << " execute=" << exe/n << "\n";
+//         tok = par = exe = 0; n = 0;
+//     }
+//     return result;
+// }
+
+
 
 void AkatsukiEngine::OpenTable(const std::string& name) {
     std::string lowerName = name;
@@ -94,8 +122,13 @@ void AkatsukiEngine::CloseTable(const std::string& name) {
     }
 }
 
-void AkatsukiEngine::Dispose() {
-    for (const auto& [name,tm] : _tables)
+   void AkatsukiEngine::Dispose() {
+    std::vector<std::string> names;
+    names.reserve(_tables.size());
+    for (auto& p : _tables)
+        names.push_back(p.first);
+    for (const auto& name : names)
         CloseTable(name);
 }
+
 

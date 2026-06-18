@@ -54,10 +54,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/omarabdo/Desktop/AkatsukiDB-Cpp
+CMAKE_SOURCE_DIR = /home/omarabdo/Desktop/AkatsukiDB
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/omarabdo/Desktop/AkatsukiDB-Cpp/build
+CMAKE_BINARY_DIR = /home/omarabdo/Desktop/AkatsukiDB/build
 
 #=============================================================================
 # Directory level rules for the build root directory
@@ -65,6 +65,7 @@ CMAKE_BINARY_DIR = /home/omarabdo/Desktop/AkatsukiDB-Cpp/build
 # The main recursive "all" target.
 all: CMakeFiles/AkatsukiDB_lib.dir/all
 all: CMakeFiles/AkatsukiDB_Cpp.dir/all
+all: CMakeFiles/benchmark.dir/all
 all: _deps/json-build/all
 all: _deps/replxx-build/all
 .PHONY : all
@@ -77,6 +78,7 @@ preinstall: _deps/replxx-build/preinstall
 # The main recursive "clean" target.
 clean: CMakeFiles/AkatsukiDB_lib.dir/clean
 clean: CMakeFiles/AkatsukiDB_Cpp.dir/clean
+clean: CMakeFiles/benchmark.dir/clean
 clean: _deps/json-build/clean
 clean: _deps/replxx-build/clean
 .PHONY : clean
@@ -118,14 +120,14 @@ _deps/replxx-build/clean: _deps/replxx-build/CMakeFiles/replxx.dir/clean
 CMakeFiles/AkatsukiDB_lib.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/AkatsukiDB_lib.dir/build.make CMakeFiles/AkatsukiDB_lib.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/AkatsukiDB_lib.dir/build.make CMakeFiles/AkatsukiDB_lib.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/CMakeFiles --progress-num=3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28 "Built target AkatsukiDB_lib"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/omarabdo/Desktop/AkatsukiDB/build/CMakeFiles --progress-num=3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28 "Built target AkatsukiDB_lib"
 .PHONY : CMakeFiles/AkatsukiDB_lib.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/AkatsukiDB_lib.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/CMakeFiles 26
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/omarabdo/Desktop/AkatsukiDB/build/CMakeFiles 26
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/AkatsukiDB_lib.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/omarabdo/Desktop/AkatsukiDB/build/CMakeFiles 0
 .PHONY : CMakeFiles/AkatsukiDB_lib.dir/rule
 
 # Convenience name for target.
@@ -145,14 +147,14 @@ CMakeFiles/AkatsukiDB_Cpp.dir/all: CMakeFiles/AkatsukiDB_lib.dir/all
 CMakeFiles/AkatsukiDB_Cpp.dir/all: _deps/replxx-build/CMakeFiles/replxx.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/AkatsukiDB_Cpp.dir/build.make CMakeFiles/AkatsukiDB_Cpp.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/AkatsukiDB_Cpp.dir/build.make CMakeFiles/AkatsukiDB_Cpp.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/CMakeFiles --progress-num=1,2 "Built target AkatsukiDB_Cpp"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/omarabdo/Desktop/AkatsukiDB/build/CMakeFiles --progress-num=1,2 "Built target AkatsukiDB_Cpp"
 .PHONY : CMakeFiles/AkatsukiDB_Cpp.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/AkatsukiDB_Cpp.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/CMakeFiles 40
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/omarabdo/Desktop/AkatsukiDB/build/CMakeFiles 40
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/AkatsukiDB_Cpp.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/omarabdo/Desktop/AkatsukiDB/build/CMakeFiles 0
 .PHONY : CMakeFiles/AkatsukiDB_Cpp.dir/rule
 
 # Convenience name for target.
@@ -165,20 +167,46 @@ CMakeFiles/AkatsukiDB_Cpp.dir/clean:
 .PHONY : CMakeFiles/AkatsukiDB_Cpp.dir/clean
 
 #=============================================================================
+# Target rules for target CMakeFiles/benchmark.dir
+
+# All Build rule for target.
+CMakeFiles/benchmark.dir/all: CMakeFiles/AkatsukiDB_lib.dir/all
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/benchmark.dir/build.make CMakeFiles/benchmark.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/benchmark.dir/build.make CMakeFiles/benchmark.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/omarabdo/Desktop/AkatsukiDB/build/CMakeFiles --progress-num=29,30 "Built target benchmark"
+.PHONY : CMakeFiles/benchmark.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/benchmark.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/omarabdo/Desktop/AkatsukiDB/build/CMakeFiles 28
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/benchmark.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/omarabdo/Desktop/AkatsukiDB/build/CMakeFiles 0
+.PHONY : CMakeFiles/benchmark.dir/rule
+
+# Convenience name for target.
+benchmark: CMakeFiles/benchmark.dir/rule
+.PHONY : benchmark
+
+# clean rule for target.
+CMakeFiles/benchmark.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/benchmark.dir/build.make CMakeFiles/benchmark.dir/clean
+.PHONY : CMakeFiles/benchmark.dir/clean
+
+#=============================================================================
 # Target rules for target _deps/replxx-build/CMakeFiles/replxx.dir
 
 # All Build rule for target.
 _deps/replxx-build/CMakeFiles/replxx.dir/all:
 	$(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/depend
 	$(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/CMakeFiles --progress-num=29,30,31,32,33,34,35,36,37,38,39,40 "Built target replxx"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/omarabdo/Desktop/AkatsukiDB/build/CMakeFiles --progress-num=31,32,33,34,35,36,37,38,39,40,41,42 "Built target replxx"
 .PHONY : _deps/replxx-build/CMakeFiles/replxx.dir/all
 
 # Build rule for subdir invocation for target.
 _deps/replxx-build/CMakeFiles/replxx.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/CMakeFiles 12
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/omarabdo/Desktop/AkatsukiDB/build/CMakeFiles 12
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 _deps/replxx-build/CMakeFiles/replxx.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/omarabdo/Desktop/AkatsukiDB/build/CMakeFiles 0
 .PHONY : _deps/replxx-build/CMakeFiles/replxx.dir/rule
 
 # Convenience name for target.
@@ -197,7 +225,7 @@ _deps/replxx-build/CMakeFiles/replxx.dir/clean:
 # No rule that depends on this can have commands that come from listfiles
 # because they might be regenerated.
 cmake_check_build_system:
-	$(CMAKE_COMMAND) -P /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/CMakeFiles/VerifyGlobs.cmake
+	$(CMAKE_COMMAND) -P /home/omarabdo/Desktop/AkatsukiDB/build/CMakeFiles/VerifyGlobs.cmake
 	$(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
 .PHONY : cmake_check_build_system
 

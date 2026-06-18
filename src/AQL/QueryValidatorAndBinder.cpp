@@ -104,6 +104,23 @@ std::optional<std::string> QueryValidatorAndBinder::ValidateSelect(SelectStateme
             return "Column " + col + " in GROUP BY not found";
     }
 
+    bool hasAggregate   = false;
+    bool hasNonAggregate = false;
+
+    for (const auto& sc : stmt.Columns) {
+        if (sc.IsStar) { hasNonAggregate = true; continue; }
+        if (sc.Column==nullptr || sc.IsWindow) continue;
+        if (dynamic_cast<FunctionExpr*>(sc.Column.get()))
+            hasAggregate = true;
+        else
+            hasNonAggregate = true;
+    }
+
+    if (hasAggregate && hasNonAggregate && stmt.GroupBy.empty()) {
+        return "Cannot mix aggregate functions with non-aggregated columns "
+               "without GROUP BY. Use GROUP BY or a window function.";
+    }
+
     return std::nullopt;
 }
 
@@ -201,13 +218,16 @@ std::optional<std::string> QueryValidatorAndBinder::ValidateExpression(
         return ValidateExpression(*like->Value, available);
 
     if (auto* fn = dynamic_cast<FunctionExpr*>(&expr)) {
-         auto& arg =   fn->Arguments;
+         auto& args =   fn->Arguments;
             // Skip "*" column
+              
+              for(auto &arg : args){  
             if (auto* cr = dynamic_cast<ColumnRef*>(arg.get()))
                 if (cr->Column == "*")
-                    return std::nullopt;
+                    continue;
             if (auto err = ValidateExpression(*arg, available)) return err;
         }
+    }
         return std::nullopt;
 
 }

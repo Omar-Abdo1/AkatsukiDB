@@ -1,7 +1,7 @@
 CMakeFiles/AkatsukiDB_lib.dir/src/AQL/Parser.cpp.o: \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/src/AQL/Parser.cpp \
+ /home/omarabdo/Desktop/AkatsukiDB/src/AQL/Parser.cpp \
  /usr/include/stdc-predef.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/src/AQL/../../include/AkatsukiDB/AQL/Parser.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/src/AQL/../../include/AkatsukiDB/AQL/Parser.hpp \
  /usr/include/c++/13/memory /usr/include/c++/13/bits/memoryfwd.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \
@@ -206,16 +206,16 @@ CMakeFiles/AkatsukiDB_lib.dir/src/AQL/Parser.cpp.o: \
  /usr/include/c++/13/bits/stl_vector.h \
  /usr/include/c++/13/bits/stl_bvector.h \
  /usr/include/c++/13/bits/vector.tcc \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/AQL/Tokenizer.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/AQL/Tokenizer.hpp \
  /usr/include/c++/13/unordered_set \
  /usr/include/c++/13/bits/unordered_set.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Expressions/Expression.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Table/ColumnDefinition.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Expressions/Expression.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Table/ColumnDefinition.hpp \
  /usr/include/c++/13/optional /usr/include/c++/13/variant \
  /usr/include/c++/13/bits/parse_numbers.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Statments/IStatement.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Statments/SelectStatement.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Table/RowSerializer.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Statments/IStatement.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Statments/SelectStatement.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Table/RowSerializer.hpp \
  /usr/include/c++/13/span /usr/include/c++/13/array \
  /usr/include/c++/13/algorithm /usr/include/c++/13/bits/stl_algo.h \
  /usr/include/c++/13/bits/algorithmfwd.h \
@@ -223,11 +223,11 @@ CMakeFiles/AkatsukiDB_lib.dir/src/AQL/Parser.cpp.o: \
  /usr/include/c++/13/bits/uniform_int_dist.h \
  /usr/include/c++/13/bits/ranges_algo.h \
  /usr/include/c++/13/pstl/glue_algorithm_defs.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Statments/CreateIndexStatement.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Statments/CreateTableStatement.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Table/TableDefinition.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Statments/DeleteStatement.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Statments/DropTableStatement.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Statments/InsertStatement.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Statments/ShowStatement.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Statments/UpdateStatement.hpp
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Statments/CreateIndexStatement.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Statments/CreateTableStatement.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Table/TableDefinition.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Statments/DeleteStatement.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Statments/DropTableStatement.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Statments/InsertStatement.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Statments/ShowStatement.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Statments/UpdateStatement.hpp

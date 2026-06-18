@@ -1,5 +1,5 @@
 _deps/replxx-build/CMakeFiles/replxx.dir/src/prompt.cxx.o: \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-src/src/prompt.cxx \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-src/src/prompt.cxx \
  /usr/include/stdc-predef.h /usr/include/unistd.h /usr/include/features.h \
  /usr/include/features-time64.h \
  /usr/include/x86_64-linux-gnu/bits/wordsize.h \
@@ -21,7 +21,7 @@ _deps/replxx-build/CMakeFiles/replxx.dir/src/prompt.cxx.o: \
  /usr/include/x86_64-linux-gnu/bits/unistd-decl.h \
  /usr/include/x86_64-linux-gnu/bits/unistd_ext.h \
  /usr/include/linux/close_range.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-src/src/prompt.hxx \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-src/src/prompt.hxx \
  /usr/include/c++/13/cstdlib \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \
@@ -62,7 +62,7 @@ _deps/replxx-build/CMakeFiles/replxx.dir/src/prompt.cxx.o: \
  /usr/include/x86_64-linux-gnu/bits/stdlib-float.h \
  /usr/include/x86_64-linux-gnu/bits/stdlib.h \
  /usr/include/c++/13/bits/std_abs.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-src/src/unicodestring.hxx \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-src/src/unicodestring.hxx \
  /usr/include/c++/13/vector /usr/include/c++/13/bits/requires_hosted.h \
  /usr/include/c++/13/bits/stl_algobase.h \
  /usr/include/c++/13/bits/functexcept.h \
@@ -115,8 +115,8 @@ _deps/replxx-build/CMakeFiles/replxx.dir/src/prompt.cxx.o: \
  /usr/include/x86_64-linux-gnu/bits/types/wint_t.h \
  /usr/include/x86_64-linux-gnu/bits/wctype-wchar.h \
  /usr/include/c++/13/cassert /usr/include/assert.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-src/src/conversion.hxx \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-src/src/ConvertUTF.h \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-src/src/conversion.hxx \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-src/src/ConvertUTF.h \
  /usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h /usr/include/stdint.h \
  /usr/include/x86_64-linux-gnu/bits/wchar.h \
  /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h \
@@ -155,7 +155,7 @@ _deps/replxx-build/CMakeFiles/replxx.dir/src/prompt.cxx.o: \
  /usr/include/x86_64-linux-gnu/bits/types/error_t.h \
  /usr/include/c++/13/bits/charconv.h \
  /usr/include/c++/13/bits/basic_string.tcc /usr/include/c++/13/version \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-src/src/terminal.hxx \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-src/src/terminal.hxx \
  /usr/include/c++/13/deque /usr/include/c++/13/bits/stl_deque.h \
  /usr/include/c++/13/bits/deque.tcc /usr/include/termios.h \
  /usr/include/x86_64-linux-gnu/bits/termios.h \
@@ -169,7 +169,7 @@ _deps/replxx-build/CMakeFiles/replxx.dir/src/prompt.cxx.o: \
  /usr/include/x86_64-linux-gnu/bits/termios-tcflow.h \
  /usr/include/x86_64-linux-gnu/bits/termios-misc.h \
  /usr/include/x86_64-linux-gnu/sys/ttydefaults.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-src/src/utf8string.hxx \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-src/src/utf8string.hxx \
  /usr/include/c++/13/memory /usr/include/c++/13/bits/stl_tempbuf.h \
  /usr/include/c++/13/bits/stl_raw_storage_iter.h \
  /usr/include/c++/13/bits/align.h /usr/include/c++/13/bits/unique_ptr.h \
@@ -235,8 +235,8 @@ _deps/replxx-build/CMakeFiles/replxx.dir/src/prompt.cxx.o: \
  /usr/include/c++/13/bits/ranges_algobase.h \
  /usr/include/c++/13/pstl/glue_memory_defs.h \
  /usr/include/c++/13/pstl/execution_defs.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-src/src/util.hxx \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-src/include/replxx.hxx \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-src/src/util.hxx \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-src/include/replxx.hxx \
  /usr/include/c++/13/functional /usr/include/c++/13/bits/std_function.h \
  /usr/include/c++/13/unordered_map \
  /usr/include/c++/13/bits/unordered_map.h \

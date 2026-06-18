@@ -10,7 +10,7 @@ IndexKey::IndexKey(std::span<const uint8_t> span) {
  if (span.size() != Size) throw std::runtime_error("Invalid key size");
  std::copy(span.begin(), span.end(), _data.begin());
 }
-
+//
 IndexKey::IndexKey():_data{} {}
 
 int IndexKey::CompareTo(const IndexKey &other) const {

@@ -66,7 +66,7 @@ BPlusTreeNode BPlusTree::GetChildNodeForInternal(const BPlusTreeNode& internal, 
     return LoadNode(childId);
 }
 
-
+//
 std::vector<std::pair<int, short>> BPlusTree::PointQuery(const IndexKey& key) {
     std::vector<std::pair<int, short>> result;
     auto leaf = FindLeaf(key);

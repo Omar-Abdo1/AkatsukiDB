@@ -5,13 +5,12 @@
 #include "AkatsukiDB/AQL/Executor.hpp"
 #include "AkatsukiDB/Engine/QueryResult.hpp"
 
-QueryResult Executor::ExecuteDropTable(DropTableStatement& stmt) {
+QueryResult Executor::ExecuteDropTable(DropTableStatement& stmt) { //  delete all files
     std::string name = stmt.TableName;
     std::transform(name.begin(), name.end(), name.begin(), ::tolower);
     if (!_registry.TableExists(name))
         return QueryResult::Error("Table Name " + name + " not found");
 
-    // Close table manager and remove from maps
     auto tblIt = _tables.find(name);
     if (tblIt != _tables.end()) {
         tblIt->second.reset();  // destructor flushes and closes
@@ -38,16 +37,14 @@ QueryResult Executor::ExecuteDropTable(DropTableStatement& stmt) {
     return QueryResult::Affected(0, "Table " + name + " dropped.");
 }
 
-// Execute TRUNCATE TABLE
-QueryResult Executor::ExecuteTruncate(TruncateStatement& stmt) {
+QueryResult Executor::ExecuteTruncate(TruncateStatement& stmt) { // delete all but keep the table,schema,index just clear
     std::string name = stmt.TableName;
     std::transform(name.begin(), name.end(), name.begin(), ::tolower);
     if (!_registry.TableExists(name))
         return QueryResult::Error("Table Name " + name + " not found");
 
-TableDefinition defCopy = _registry.GetTable(name); // explicit copy
+TableDefinition& def = _registry.GetTable(name);
 
-    // Close table and indexes
     auto tblIt = _tables.find(name);
     if (tblIt != _tables.end()) {
         tblIt->second.reset();
@@ -73,8 +70,8 @@ TableDefinition defCopy = _registry.GetTable(name); // explicit copy
     OpenTable(name);
 
     // Reset auto-increment counter
-    defCopy.NextAutoValue = 1;
-    _registry.SaveTable(defCopy);
+    def.NextAutoValue = 1;
+    _registry.SaveTable(def);
 
     return QueryResult::Affected(0, "Table " + name + " truncated.");
 }

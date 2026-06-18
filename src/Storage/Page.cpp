@@ -67,6 +67,7 @@ return Read<int>(2);
 }
 
  void Page::SetNextPageId(int nextPageId) {
+
  Write<int>(6, nextPageId);
 }
 

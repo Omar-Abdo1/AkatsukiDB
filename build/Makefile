@@ -57,10 +57,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/omarabdo/Desktop/AkatsukiDB-Cpp
+CMAKE_SOURCE_DIR = /home/omarabdo/Desktop/AkatsukiDB
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/omarabdo/Desktop/AkatsukiDB-Cpp/build
+CMAKE_BINARY_DIR = /home/omarabdo/Desktop/AkatsukiDB/build
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -132,9 +132,9 @@ install/strip/fast: preinstall/fast
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/CMakeFiles /home/omarabdo/Desktop/AkatsukiDB-Cpp/build//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/omarabdo/Desktop/AkatsukiDB/build/CMakeFiles /home/omarabdo/Desktop/AkatsukiDB/build//CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/omarabdo/Desktop/AkatsukiDB/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -158,7 +158,7 @@ preinstall/fast:
 
 # clear depends
 depend:
-	$(CMAKE_COMMAND) -P /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/CMakeFiles/VerifyGlobs.cmake
+	$(CMAKE_COMMAND) -P /home/omarabdo/Desktop/AkatsukiDB/build/CMakeFiles/VerifyGlobs.cmake
 	$(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
 .PHONY : depend
 
@@ -189,6 +189,19 @@ AkatsukiDB_Cpp/fast:
 .PHONY : AkatsukiDB_Cpp/fast
 
 #=============================================================================
+# Target rules for targets named benchmark
+
+# Build rule for target.
+benchmark: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 benchmark
+.PHONY : benchmark
+
+# fast build rule for target.
+benchmark/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/benchmark.dir/build.make CMakeFiles/benchmark.dir/build
+.PHONY : benchmark/fast
+
+#=============================================================================
 # Target rules for targets named replxx
 
 # Build rule for target.
@@ -200,6 +213,30 @@ replxx: cmake_check_build_system
 replxx/fast:
 	$(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/build
 .PHONY : replxx/fast
+
+benchmark/benchmark.o: benchmark/benchmark.cpp.o
+.PHONY : benchmark/benchmark.o
+
+# target to build an object file
+benchmark/benchmark.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/benchmark.dir/build.make CMakeFiles/benchmark.dir/benchmark/benchmark.cpp.o
+.PHONY : benchmark/benchmark.cpp.o
+
+benchmark/benchmark.i: benchmark/benchmark.cpp.i
+.PHONY : benchmark/benchmark.i
+
+# target to preprocess a source file
+benchmark/benchmark.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/benchmark.dir/build.make CMakeFiles/benchmark.dir/benchmark/benchmark.cpp.i
+.PHONY : benchmark/benchmark.cpp.i
+
+benchmark/benchmark.s: benchmark/benchmark.cpp.s
+.PHONY : benchmark/benchmark.s
+
+# target to generate assembly for a file
+benchmark/benchmark.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/benchmark.dir/build.make CMakeFiles/benchmark.dir/benchmark/benchmark.cpp.s
+.PHONY : benchmark/benchmark.cpp.s
 
 cli/main.o: cli/main.cpp.o
 .PHONY : cli/main.o
@@ -839,7 +876,11 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... AkatsukiDB_Cpp"
 	@echo "... AkatsukiDB_lib"
+	@echo "... benchmark"
 	@echo "... replxx"
+	@echo "... benchmark/benchmark.o"
+	@echo "... benchmark/benchmark.i"
+	@echo "... benchmark/benchmark.s"
 	@echo "... cli/main.o"
 	@echo "... cli/main.i"
 	@echo "... cli/main.s"
@@ -929,7 +970,7 @@ help:
 # No rule that depends on this can have commands that come from listfiles
 # because they might be regenerated.
 cmake_check_build_system:
-	$(CMAKE_COMMAND) -P /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/CMakeFiles/VerifyGlobs.cmake
+	$(CMAKE_COMMAND) -P /home/omarabdo/Desktop/AkatsukiDB/build/CMakeFiles/VerifyGlobs.cmake
 	$(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
 .PHONY : cmake_check_build_system
 

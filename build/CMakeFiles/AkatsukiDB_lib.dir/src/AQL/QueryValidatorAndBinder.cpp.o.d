@@ -1,7 +1,7 @@
 CMakeFiles/AkatsukiDB_lib.dir/src/AQL/QueryValidatorAndBinder.cpp.o: \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/src/AQL/QueryValidatorAndBinder.cpp \
+ /home/omarabdo/Desktop/AkatsukiDB/src/AQL/QueryValidatorAndBinder.cpp \
  /usr/include/stdc-predef.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/AQL/QueryValidatorAndBinder.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/AQL/QueryValidatorAndBinder.hpp \
  /usr/include/c++/13/optional /usr/include/c++/13/type_traits \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \
@@ -127,7 +127,7 @@ CMakeFiles/AkatsukiDB_lib.dir/src/AQL/QueryValidatorAndBinder.cpp.o: \
  /usr/include/c++/13/bits/uses_allocator.h \
  /usr/include/c++/13/bits/uses_allocator_args.h /usr/include/c++/13/tuple \
  /usr/include/c++/13/bits/ranges_util.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Statments/DeleteStatement.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Statments/DeleteStatement.hpp \
  /usr/include/c++/13/memory /usr/include/c++/13/bits/stl_tempbuf.h \
  /usr/include/c++/13/bits/stl_uninitialized.h \
  /usr/include/c++/13/bits/stl_raw_storage_iter.h \
@@ -203,12 +203,12 @@ CMakeFiles/AkatsukiDB_lib.dir/src/AQL/QueryValidatorAndBinder.cpp.o: \
  /usr/include/c++/13/bits/ranges_algobase.h \
  /usr/include/c++/13/pstl/glue_memory_defs.h \
  /usr/include/c++/13/pstl/execution_defs.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Statments/IStatement.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Expressions/Expression.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Statments/IStatement.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Expressions/Expression.hpp \
  /usr/include/c++/13/vector /usr/include/c++/13/bits/stl_vector.h \
  /usr/include/c++/13/bits/stl_bvector.h \
  /usr/include/c++/13/bits/vector.tcc \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Table/ColumnDefinition.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Table/ColumnDefinition.hpp \
  /usr/include/c++/13/unordered_map \
  /usr/include/c++/13/bits/unordered_map.h \
  /usr/include/c++/13/bits/hashtable.h \
@@ -216,10 +216,10 @@ CMakeFiles/AkatsukiDB_lib.dir/src/AQL/QueryValidatorAndBinder.cpp.o: \
  /usr/include/c++/13/bits/node_handle.h \
  /usr/include/c++/13/bits/erase_if.h /usr/include/c++/13/variant \
  /usr/include/c++/13/bits/parse_numbers.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Statments/SelectStatement.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Statments/UpdateStatement.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Table/TableRegistry.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Storage/StorageLayout.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Statments/SelectStatement.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Statments/UpdateStatement.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Table/TableRegistry.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Storage/StorageLayout.hpp \
  /usr/include/c++/13/filesystem /usr/include/c++/13/bits/fs_fwd.h \
  /usr/include/c++/13/bits/chrono.h /usr/include/c++/13/ratio \
  /usr/include/c++/13/limits /usr/include/c++/13/ctime \
@@ -234,7 +234,7 @@ CMakeFiles/AkatsukiDB_lib.dir/src/AQL/QueryValidatorAndBinder.cpp.o: \
  /usr/include/c++/13/istream /usr/include/c++/13/bits/istream.tcc \
  /usr/include/c++/13/bits/sstream.tcc /usr/include/c++/13/codecvt \
  /usr/include/c++/13/bits/fs_dir.h /usr/include/c++/13/bits/fs_ops.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Table/TableDefinition.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Table/TableDefinition.hpp \
  /usr/include/c++/13/algorithm /usr/include/c++/13/bits/stl_algo.h \
  /usr/include/c++/13/bits/algorithmfwd.h \
  /usr/include/c++/13/bits/stl_heap.h \

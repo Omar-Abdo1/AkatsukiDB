@@ -8,7 +8,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
-  "/home/omarabdo/Desktop/AkatsukiDB-Cpp/cli/main.cpp" "CMakeFiles/AkatsukiDB_Cpp.dir/cli/main.cpp.o" "gcc" "CMakeFiles/AkatsukiDB_Cpp.dir/cli/main.cpp.o.d"
+  "/home/omarabdo/Desktop/AkatsukiDB/cli/main.cpp" "CMakeFiles/AkatsukiDB_Cpp.dir/cli/main.cpp.o" "gcc" "CMakeFiles/AkatsukiDB_Cpp.dir/cli/main.cpp.o.d"
   )
 
 # Targets to which this target links which contain Fortran sources.

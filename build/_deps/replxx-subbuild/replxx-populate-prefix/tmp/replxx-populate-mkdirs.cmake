@@ -4,19 +4,19 @@
 cmake_minimum_required(VERSION 3.5)
 
 file(MAKE_DIRECTORY
-  "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-src"
-  "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-build"
-  "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-subbuild/replxx-populate-prefix"
-  "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-subbuild/replxx-populate-prefix/tmp"
-  "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-subbuild/replxx-populate-prefix/src/replxx-populate-stamp"
-  "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-subbuild/replxx-populate-prefix/src"
-  "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-subbuild/replxx-populate-prefix/src/replxx-populate-stamp"
+  "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-src"
+  "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-build"
+  "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-subbuild/replxx-populate-prefix"
+  "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-subbuild/replxx-populate-prefix/tmp"
+  "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-subbuild/replxx-populate-prefix/src/replxx-populate-stamp"
+  "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-subbuild/replxx-populate-prefix/src"
+  "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-subbuild/replxx-populate-prefix/src/replxx-populate-stamp"
 )
 
 set(configSubDirs )
 foreach(subDir IN LISTS configSubDirs)
-    file(MAKE_DIRECTORY "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-subbuild/replxx-populate-prefix/src/replxx-populate-stamp/${subDir}")
+    file(MAKE_DIRECTORY "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-subbuild/replxx-populate-prefix/src/replxx-populate-stamp/${subDir}")
 endforeach()
 if(cfgdir)
-  file(MAKE_DIRECTORY "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-subbuild/replxx-populate-prefix/src/replxx-populate-stamp${cfgdir}") # cfgdir has leading slash
+  file(MAKE_DIRECTORY "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-subbuild/replxx-populate-prefix/src/replxx-populate-stamp${cfgdir}") # cfgdir has leading slash
 endif()

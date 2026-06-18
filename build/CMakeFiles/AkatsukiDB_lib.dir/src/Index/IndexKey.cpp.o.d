@@ -1,7 +1,7 @@
 CMakeFiles/AkatsukiDB_lib.dir/src/Index/IndexKey.cpp.o: \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/src/Index/IndexKey.cpp \
+ /home/omarabdo/Desktop/AkatsukiDB/src/Index/IndexKey.cpp \
  /usr/include/stdc-predef.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/src/Index/../../include/AkatsukiDB/Index/IndexKey.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/src/Index/../../include/AkatsukiDB/Index/IndexKey.hpp \
  /usr/include/c++/13/array /usr/include/c++/13/compare \
  /usr/include/c++/13/concepts /usr/include/c++/13/type_traits \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
@@ -131,7 +131,7 @@ CMakeFiles/AkatsukiDB_lib.dir/src/Index/IndexKey.cpp.o: \
  /usr/include/c++/13/bits/uses_allocator.h \
  /usr/include/c++/13/bits/uses_allocator_args.h /usr/include/c++/13/tuple \
  /usr/include/c++/13/bits/ranges_util.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Table/ColumnDefinition.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Table/ColumnDefinition.hpp \
  /usr/include/c++/13/optional \
  /usr/include/c++/13/bits/enable_special_members.h \
  /usr/include/c++/13/unordered_map \

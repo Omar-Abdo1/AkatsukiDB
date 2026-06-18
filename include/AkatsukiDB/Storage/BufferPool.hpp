@@ -12,7 +12,7 @@
 #include "PageManager.hpp"
 #include "PageManager.hpp"
 
-constexpr size_t MaxCapacity = 256;
+constexpr size_t MaxCapacity = 1024;
 
 class BufferPool {
     PageManager _pageManager;

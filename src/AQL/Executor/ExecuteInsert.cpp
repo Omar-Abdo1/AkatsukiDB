@@ -12,11 +12,12 @@ QueryResult Executor::ExecuteInsert(InsertStatement& stmt) {
     if (!_registry.TableExists(tableName))
         return QueryResult::Error("Table Name " + stmt.TableName + " does not exist");
 
-    const auto& def = _registry.GetTable(tableName);
+     auto& def = _registry.GetTable(tableName);
     auto tmIt = _tables.find(tableName);
     if (tmIt == _tables.end())
         return QueryResult::Error("Table manager not loaded for " + tableName);
-    auto& tm = *tmIt->second;
+
+    TableManager* tm =tmIt->second.get();
 
     // Set of column names (lowercase)
     std::unordered_set<std::string> colNames;
@@ -40,18 +41,17 @@ QueryResult Executor::ExecuteInsert(InsertStatement& stmt) {
         for (const auto& col : def.Columns) {
             if (col.Default.has_value() &&
                 (!rowDict.count(col.Name) || std::holds_alternative<std::monostate>(rowDict[col.Name]))) {
-                rowDict[col.Name] = *col.Default;
+                rowDict[col.Name] = col.Default.value();
                 }
         }
 
         // Auto-increment
-        TableDefinition& mutableDef = const_cast<TableDefinition&>(def);
-        if (mutableDef.AutoIncrement) {
-            const std::string& pk = mutableDef.PrimaryKey[0];
-            if (!rowDict.count(pk) || std::holds_alternative<std::monostate>(rowDict[pk])) {
-                rowDict[pk] = mutableDef.NextAutoValue;
-                mutableDef.NextAutoValue++;
-                _registry.SaveTable(mutableDef);
+        if (def.AutoIncrement) {
+            const std::string& pk = def.PrimaryKey[0];
+            if (!rowDict.count(pk) || std::holds_alternative<std::monostate>(rowDict[pk])) { // id=null
+                rowDict[pk] = def.NextAutoValue;
+                def.NextAutoValue++;
+                _registry.SaveTable(def);
             }
         }
 
@@ -69,25 +69,26 @@ QueryResult Executor::ExecuteInsert(InsertStatement& stmt) {
         auto pkIndexIt = _indexes.find(tableName);
         if (pkIndexIt == _indexes.end() || pkIndexIt->second.empty())
             return QueryResult::Error("Primary key index not found");
-        auto& pkTree = *pkIndexIt->second[0].second;
-        auto pkRes = pkTree.PointQuery(pkKey);
+        BPlusTree * pkTree = pkIndexIt->second[0].second.get();
+        auto pkRes = pkTree->PointQuery(pkKey);
         if (!pkRes.empty())
             return QueryResult::Error("PRIMARY KEY violation: key already exists.");
 
         // Foreign key checks
         for (const auto& fk : def.ForeignKeys) {
             auto it = rowDict.find(fk.Column);
+
             if (it == rowDict.end() || std::holds_alternative<std::monostate>(it->second))
                 continue;
+
             const DbObject& val = it->second;
             auto refIt = _indexes.find(fk.RefTable);
             if (refIt == _indexes.end() || refIt->second.empty())
                 return QueryResult::Error("Referenced table '" + fk.RefTable + "' has no index.");
-            auto& refTree = *refIt->second[0].second;
-            // Build key from single value (assuming FK is single column)
+            BPlusTree * refTree = refIt->second[0].second.get();
             std::vector<DbObject> keyVals = {val};
             IndexKey fkKey((std::span<const DbObject>(keyVals)));
-            auto res = refTree.PointQuery(fkKey);
+            auto res = refTree->PointQuery(fkKey);
             if (res.empty())
                 return QueryResult::Error("FOREIGN KEY violation: '" + fk.Column + "' = " + DbObjectToString(val) + " not found in " + fk.RefTable + ".");
         }
@@ -98,37 +99,35 @@ QueryResult Executor::ExecuteInsert(InsertStatement& stmt) {
             const auto& idxDef = def.Indexes[i];
             if (idxDef.IsUnique && !idxDef.IsPrimary) {
                 auto key = BuildKeyForTree(rowDict, idxDef.Columns);
-                auto& idxTree = *idxList[i].second;
-                auto res = idxTree.PointQuery(key);
-                if (!res.empty())
+                BPlusTree* idxTree = idxList[i].second.get();
+                auto res = idxTree->PointQuery(key);
+                if (res.empty()==true)
                     return QueryResult::Error("UNIQUE violation on index '" + idxDef.Name + "'.");
             }
         }
 
         // Write row to storage
         std::vector<std::uint8_t> bytes = RowSerializer::Serialize(rowDict, def.Columns, def.RowSizeBytes);
-        auto [pageId, slotIndex] = tm.InsertRow(bytes);
+        auto [pageId, slotIndex] = tm->InsertRow(bytes);
 
         // Update all indexes
         for (size_t i = 0; i < def.Indexes.size(); ++i) {
-            auto& idxTree = *idxList[i].second;
+            BPlusTree* idxTree = idxList[i].second.get();
             auto key = BuildKeyForTree(rowDict, def.Indexes[i].Columns);
-            idxTree.Insert({key, pageId, static_cast<short>(slotIndex)});
+            idxTree->Insert({key, pageId, static_cast<short>(slotIndex)});
         }
 
-        if (mutableDef.AutoIncrement) {
-            const std::string& pk = mutableDef.PrimaryKey[0];
+        if (def.AutoIncrement) {
+            const std::string& pk = def.PrimaryKey[0];
             auto it = rowDict.find(pk);
-            if (it != rowDict.end() && !std::holds_alternative<std::monostate>(it->second)) {
-                // Explicit primary key value provided
+            if (it != rowDict.end() && !std::holds_alternative<std::monostate>(it->second) ) {
                 int providedId = std::get<int>(it->second);
-                if (providedId >= mutableDef.NextAutoValue) {
-                    mutableDef.NextAutoValue = providedId + 1;
-                    _registry.SaveTable(mutableDef);
+                if (providedId >= def.NextAutoValue) {
+                    def.NextAutoValue = providedId + 1;
+                    _registry.SaveTable(def);
                 }
             }
         }
-
         ++count;
     }
     return QueryResult::Affected(count);

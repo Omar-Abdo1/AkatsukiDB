@@ -1,7 +1,7 @@
 CMakeFiles/AkatsukiDB_lib.dir/src/Engine/QueryResult.cpp.o: \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/src/Engine/QueryResult.cpp \
+ /home/omarabdo/Desktop/AkatsukiDB/src/Engine/QueryResult.cpp \
  /usr/include/stdc-predef.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/src/Engine/../../include/AkatsukiDB/Engine/QueryResult.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/src/Engine/../../include/AkatsukiDB/Engine/QueryResult.hpp \
  /usr/include/c++/13/optional /usr/include/c++/13/type_traits \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \
@@ -127,7 +127,7 @@ CMakeFiles/AkatsukiDB_lib.dir/src/Engine/QueryResult.cpp.o: \
  /usr/include/c++/13/bits/uses_allocator.h \
  /usr/include/c++/13/bits/uses_allocator_args.h /usr/include/c++/13/tuple \
  /usr/include/c++/13/bits/ranges_util.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Table/RowSerializer.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Table/RowSerializer.hpp \
  /usr/include/c++/13/cstdint \
  /usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h /usr/include/stdint.h \
  /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h \
@@ -144,5 +144,5 @@ CMakeFiles/AkatsukiDB_lib.dir/src/Engine/QueryResult.cpp.o: \
  /usr/include/c++/13/bits/stl_vector.h \
  /usr/include/c++/13/bits/stl_bvector.h \
  /usr/include/c++/13/bits/vector.tcc \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Table/ColumnDefinition.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Table/ColumnDefinition.hpp \
  /usr/include/c++/13/variant /usr/include/c++/13/bits/parse_numbers.h

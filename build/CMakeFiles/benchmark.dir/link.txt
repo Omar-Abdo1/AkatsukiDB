@@ -1,0 +1,1 @@
+/usr/bin/c++  -fsanitize=address -g -O0 -fno-omit-frame-pointer  -fsanitize=address CMakeFiles/benchmark.dir/benchmark/benchmark.cpp.o -o benchmark  libAkatsukiDB_lib.a /usr/lib/x86_64-linux-gnu/libsqlite3.so 

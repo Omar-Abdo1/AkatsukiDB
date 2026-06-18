@@ -14,7 +14,6 @@ struct RowEntry {
 
 class TableManager {
     std::unique_ptr<BufferPool> _bufferPool;
-    int _rowSizeBytes;
 
     std::shared_ptr<Page> GetPageWithSpace();
 
@@ -22,6 +21,8 @@ class TableManager {
     bool IsDeleted(std::span<const uint8_t> rowBytes)const;
 
 public:
+    int _rowSizeBytes;
+
     TableManager(std::unique_ptr<BufferPool> bufferPool,int rowSizeBytes);
 
     // The unique_ptr automatically cleans up the BufferPool so we do not need a destructor
@@ -31,6 +32,9 @@ public:
     std::vector<RowEntry>FullScan();
 
     std::vector<uint8_t>ReadRow(int pageId,int slotIndex);
+
+    std::shared_ptr<Page> GetPageDirect(int pageId) { return _bufferPool->GetPage(pageId); }
+    int RowSizeBytes() const { return _rowSizeBytes; }
 
     void UpdateRow(int pageId, int slotIndex, std::span<const uint8_t >newRowBytes);
 

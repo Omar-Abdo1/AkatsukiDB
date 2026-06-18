@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/c++
 CXX_DEFINES = -DREPLXX_STATIC
 
-CXX_INCLUDES = -I/home/omarabdo/Desktop/AkatsukiDB-Cpp/include -I/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include -I/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-src/include
+CXX_INCLUDES = -I/home/omarabdo/Desktop/AkatsukiDB/include -I/home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include -I/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-src/include
 
-CXX_FLAGS = -std=gnu++20
+CXX_FLAGS =  -fsanitize=address -g -O0 -fno-omit-frame-pointer -std=gnu++20
 

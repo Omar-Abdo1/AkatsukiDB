@@ -21,41 +21,31 @@ QueryResult Executor::ExecuteUpdate(UpdateStatement& stmt) {
     int count       = 0;
 
     auto plan    = _scanPlanner.Decide(name, stmt.Where.get());
-    auto entries = GetRowEntries(tm, def, plan);
+    auto scanned = GetScannedRows(tm, def, plan);
 
-    // ── PHASE 1: validate ALL rows first ─────────────────────────
-    // build list of (oldRow, newRow, entry) — touch nothing yet
     struct RowChange {
-        const RowEntry*      Entry;
-        DbRow                OldRow;
-        DbRow                NewRow;
-        std::vector<IndexKey>OldKeys;
-        std::vector<IndexKey>NewKeys;
+        int PageId, SlotIndex;
+        DbRow OldRow, NewRow;
+        std::vector<IndexKey> OldKeys, NewKeys;
     };
+
     std::vector<RowChange> changes;
 
-    for (auto& entry : entries) {
-        auto row = RowSerializer::Deserialize(entry.Bytes, def.Columns);
-
-        if (!PassesFilter(row, plan)) continue;
-        if (plan.Type == ScanType::Full && stmt.Where)
-            if (!EvaluateBool(*stmt.Where, row)) continue;
-
-        // save old row + old keys
+    for (auto& [PageId, SlotIndex, Row] : scanned) {
         RowChange change;
-        change.Entry  = &entry;
-        change.OldRow = row;
+        change.PageId    = PageId;
+        change.SlotIndex = SlotIndex;
+        change.OldRow    = Row;
 
         if (_indexes.count(name))
             for (auto& [idxDef, tree] : _indexes[name])
-                change.OldKeys.push_back(BuildKeyForTree(row, idxDef.Columns));
+                change.OldKeys.push_back(BuildKeyForTree(Row, idxDef.Columns));
 
-        // apply SET to get new row
-        DbRow newRow = row;
+        DbRow newRow = Row;
         for (auto& [col, expr] : stmt.Assignments)
-            newRow[col] = GetValue(*expr, row);
+            newRow[col] = GetValue(*expr, Row);
 
-        // NOT NULL check — before any write
+        // NOT NULL check
         for (const auto& col : def.Columns) {
             if (!col.Nullable) {
                 auto it = newRow.find(col.Name);
@@ -66,25 +56,46 @@ QueryResult Executor::ExecuteUpdate(UpdateStatement& stmt) {
             }
         }
 
-        // compute new keys
+        for (const auto& fk : def.ForeignKeys) {
+            // is this FK column being changed?
+            if (!stmt.Assignments.count(fk.Column)) continue;
+
+            auto newVal = newRow.find(fk.Column);
+            if (newVal == newRow.end()
+                || std::holds_alternative<std::monostate>(newVal->second))
+                continue;
+
+            auto refIdxIt = _indexes.find(fk.RefTable);
+            if (refIdxIt == _indexes.end() || refIdxIt->second.empty())
+                return QueryResult::Error(
+                    "Referenced table '" + fk.RefTable + "' has no index.");
+
+            std::vector<DbObject> vals = { newVal->second };
+            auto res = refIdxIt->second[0].second->PointQuery(
+                IndexKey(std::span<const DbObject>(vals)));
+            if (res.empty())
+                return QueryResult::Error(
+                    "FK violation: '" + fk.Column + "' = "
+                    + DbObjectToString(newVal->second)
+                    + " not found in '" + fk.RefTable + "'.");
+        }
+
         if (_indexes.count(name))
             for (auto& [idxDef, tree] : _indexes[name])
                 change.NewKeys.push_back(BuildKeyForTree(newRow, idxDef.Columns));
 
-        // PK uniqueness check — before any write
         if (_indexes.count(name)) {
             auto& idxList = _indexes[name];
             for (size_t i = 0; i < idxList.size(); i++) {
                 auto& [idxDef, tree] = idxList[i];
-                if (change.OldKeys[i].CompareTo(change.NewKeys[i]) == 0)
-                    continue; // key unchanged — no conflict possible
+                if (change.OldKeys[i] == change.NewKeys[i]) continue;
                 if (!idxDef.IsUnique) continue;
                 auto res = tree->PointQuery(change.NewKeys[i]);
                 if (!res.empty())
                     return QueryResult::Error(
                         idxDef.IsPrimary
                         ? "PRIMARY KEY violation on UPDATE."
-                        : "UNIQUE violation on UPDATE: index '" + idxDef.Name + "'.");
+                        : "UNIQUE violation: index '" + idxDef.Name + "'.");
             }
         }
 
@@ -92,22 +103,20 @@ QueryResult Executor::ExecuteUpdate(UpdateStatement& stmt) {
         changes.push_back(std::move(change));
     }
 
-    // ── PHASE 2: all valid — now write ───────────────────────────
     for (auto& c : changes) {
-        // write new bytes to .tbl
         auto newBytes = RowSerializer::Serialize(
             c.NewRow, def.Columns, def.RowSizeBytes);
-        tm.UpdateRow(c.Entry->PageId, c.Entry->SlotIndex, newBytes);
 
-        // update indexes
+        tm.UpdateRow(c.PageId, c.SlotIndex, newBytes);
+
         if (_indexes.count(name)) {
             auto& idxList = _indexes[name];
             for (size_t i = 0; i < idxList.size(); i++) {
                 auto& [idxDef, tree] = idxList[i];
-                if (c.OldKeys[i].CompareTo(c.NewKeys[i]) == 0) continue;
+                if (c.OldKeys[i] == c.NewKeys[i]) continue;
                 tree->Delete(c.OldKeys[i]);
-                tree->Insert({c.NewKeys[i], c.Entry->PageId,
-                    static_cast<short>(c.Entry->SlotIndex)});
+                tree->Insert({c.NewKeys[i], c.PageId,
+                    static_cast<short>(c.SlotIndex)});
             }
         }
         ++count;

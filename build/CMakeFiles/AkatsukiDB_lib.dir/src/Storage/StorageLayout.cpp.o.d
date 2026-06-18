@@ -1,7 +1,7 @@
 CMakeFiles/AkatsukiDB_lib.dir/src/Storage/StorageLayout.cpp.o: \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/src/Storage/StorageLayout.cpp \
+ /home/omarabdo/Desktop/AkatsukiDB/src/Storage/StorageLayout.cpp \
  /usr/include/stdc-predef.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/src/Storage/../../include/AkatsukiDB/Storage/StorageLayout.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/src/Storage/../../include/AkatsukiDB/Storage/StorageLayout.hpp \
  /usr/include/c++/13/filesystem \
  /usr/include/c++/13/bits/requires_hosted.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \

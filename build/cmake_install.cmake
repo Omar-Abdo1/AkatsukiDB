@@ -1,4 +1,4 @@
-# Install script for directory: /home/omarabdo/Desktop/AkatsukiDB-Cpp
+# Install script for directory: /home/omarabdo/Desktop/AkatsukiDB
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -44,12 +44,12 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-build/cmake_install.cmake")
+  include("/home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-build/cmake_install.cmake")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-build/cmake_install.cmake")
+  include("/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-build/cmake_install.cmake")
 endif()
 
 if(CMAKE_INSTALL_COMPONENT)
@@ -60,5 +60,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/home/omarabdo/Desktop/AkatsukiDB/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

@@ -1,7 +1,7 @@
 CMakeFiles/AkatsukiDB_lib.dir/src/AQL/Tokenizer.cpp.o: \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/src/AQL/Tokenizer.cpp \
+ /home/omarabdo/Desktop/AkatsukiDB/src/AQL/Tokenizer.cpp \
  /usr/include/stdc-predef.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/src/AQL/../../include/AkatsukiDB/AQL/Tokenizer.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/src/AQL/../../include/AkatsukiDB/AQL/Tokenizer.hpp \
  /usr/include/c++/13/string /usr/include/c++/13/bits/requires_hosted.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \

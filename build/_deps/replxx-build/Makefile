@@ -57,10 +57,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/omarabdo/Desktop/AkatsukiDB-Cpp
+CMAKE_SOURCE_DIR = /home/omarabdo/Desktop/AkatsukiDB
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/omarabdo/Desktop/AkatsukiDB-Cpp/build
+CMAKE_BINARY_DIR = /home/omarabdo/Desktop/AkatsukiDB/build
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -132,14 +132,14 @@ install/strip/fast: preinstall/fast
 
 # The main all target
 all: cmake_check_build_system
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(CMAKE_COMMAND) -E cmake_progress_start /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/CMakeFiles /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-build//CMakeFiles/progress.marks
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 _deps/replxx-build/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/CMakeFiles 0
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(CMAKE_COMMAND) -E cmake_progress_start /home/omarabdo/Desktop/AkatsukiDB/build/CMakeFiles /home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-build//CMakeFiles/progress.marks
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 _deps/replxx-build/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/omarabdo/Desktop/AkatsukiDB/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
 clean:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 _deps/replxx-build/clean
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 _deps/replxx-build/clean
 .PHONY : clean
 
 # The main clean target
@@ -148,23 +148,23 @@ clean/fast: clean
 
 # Prepare targets for installation.
 preinstall: all
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 _deps/replxx-build/preinstall
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 _deps/replxx-build/preinstall
 .PHONY : preinstall
 
 # Prepare targets for installation.
 preinstall/fast:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 _deps/replxx-build/preinstall
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 _deps/replxx-build/preinstall
 .PHONY : preinstall/fast
 
 # clear depends
 depend:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(CMAKE_COMMAND) -P /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/CMakeFiles/VerifyGlobs.cmake
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(CMAKE_COMMAND) -P /home/omarabdo/Desktop/AkatsukiDB/build/CMakeFiles/VerifyGlobs.cmake
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
 .PHONY : depend
 
 # Convenience name for target.
 _deps/replxx-build/CMakeFiles/replxx.dir/rule:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 _deps/replxx-build/CMakeFiles/replxx.dir/rule
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 _deps/replxx-build/CMakeFiles/replxx.dir/rule
 .PHONY : _deps/replxx-build/CMakeFiles/replxx.dir/rule
 
 # Convenience name for target.
@@ -173,7 +173,7 @@ replxx: _deps/replxx-build/CMakeFiles/replxx.dir/rule
 
 # fast build rule for target.
 replxx/fast:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/build
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/build
 .PHONY : replxx/fast
 
 src/ConvertUTF.o: src/ConvertUTF.cpp.o
@@ -181,7 +181,7 @@ src/ConvertUTF.o: src/ConvertUTF.cpp.o
 
 # target to build an object file
 src/ConvertUTF.cpp.o:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/ConvertUTF.cpp.o
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/ConvertUTF.cpp.o
 .PHONY : src/ConvertUTF.cpp.o
 
 src/ConvertUTF.i: src/ConvertUTF.cpp.i
@@ -189,7 +189,7 @@ src/ConvertUTF.i: src/ConvertUTF.cpp.i
 
 # target to preprocess a source file
 src/ConvertUTF.cpp.i:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/ConvertUTF.cpp.i
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/ConvertUTF.cpp.i
 .PHONY : src/ConvertUTF.cpp.i
 
 src/ConvertUTF.s: src/ConvertUTF.cpp.s
@@ -197,7 +197,7 @@ src/ConvertUTF.s: src/ConvertUTF.cpp.s
 
 # target to generate assembly for a file
 src/ConvertUTF.cpp.s:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/ConvertUTF.cpp.s
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/ConvertUTF.cpp.s
 .PHONY : src/ConvertUTF.cpp.s
 
 src/conversion.o: src/conversion.cxx.o
@@ -205,7 +205,7 @@ src/conversion.o: src/conversion.cxx.o
 
 # target to build an object file
 src/conversion.cxx.o:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/conversion.cxx.o
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/conversion.cxx.o
 .PHONY : src/conversion.cxx.o
 
 src/conversion.i: src/conversion.cxx.i
@@ -213,7 +213,7 @@ src/conversion.i: src/conversion.cxx.i
 
 # target to preprocess a source file
 src/conversion.cxx.i:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/conversion.cxx.i
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/conversion.cxx.i
 .PHONY : src/conversion.cxx.i
 
 src/conversion.s: src/conversion.cxx.s
@@ -221,7 +221,7 @@ src/conversion.s: src/conversion.cxx.s
 
 # target to generate assembly for a file
 src/conversion.cxx.s:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/conversion.cxx.s
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/conversion.cxx.s
 .PHONY : src/conversion.cxx.s
 
 src/escape.o: src/escape.cxx.o
@@ -229,7 +229,7 @@ src/escape.o: src/escape.cxx.o
 
 # target to build an object file
 src/escape.cxx.o:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/escape.cxx.o
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/escape.cxx.o
 .PHONY : src/escape.cxx.o
 
 src/escape.i: src/escape.cxx.i
@@ -237,7 +237,7 @@ src/escape.i: src/escape.cxx.i
 
 # target to preprocess a source file
 src/escape.cxx.i:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/escape.cxx.i
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/escape.cxx.i
 .PHONY : src/escape.cxx.i
 
 src/escape.s: src/escape.cxx.s
@@ -245,7 +245,7 @@ src/escape.s: src/escape.cxx.s
 
 # target to generate assembly for a file
 src/escape.cxx.s:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/escape.cxx.s
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/escape.cxx.s
 .PHONY : src/escape.cxx.s
 
 src/history.o: src/history.cxx.o
@@ -253,7 +253,7 @@ src/history.o: src/history.cxx.o
 
 # target to build an object file
 src/history.cxx.o:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/history.cxx.o
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/history.cxx.o
 .PHONY : src/history.cxx.o
 
 src/history.i: src/history.cxx.i
@@ -261,7 +261,7 @@ src/history.i: src/history.cxx.i
 
 # target to preprocess a source file
 src/history.cxx.i:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/history.cxx.i
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/history.cxx.i
 .PHONY : src/history.cxx.i
 
 src/history.s: src/history.cxx.s
@@ -269,7 +269,7 @@ src/history.s: src/history.cxx.s
 
 # target to generate assembly for a file
 src/history.cxx.s:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/history.cxx.s
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/history.cxx.s
 .PHONY : src/history.cxx.s
 
 src/prompt.o: src/prompt.cxx.o
@@ -277,7 +277,7 @@ src/prompt.o: src/prompt.cxx.o
 
 # target to build an object file
 src/prompt.cxx.o:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/prompt.cxx.o
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/prompt.cxx.o
 .PHONY : src/prompt.cxx.o
 
 src/prompt.i: src/prompt.cxx.i
@@ -285,7 +285,7 @@ src/prompt.i: src/prompt.cxx.i
 
 # target to preprocess a source file
 src/prompt.cxx.i:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/prompt.cxx.i
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/prompt.cxx.i
 .PHONY : src/prompt.cxx.i
 
 src/prompt.s: src/prompt.cxx.s
@@ -293,7 +293,7 @@ src/prompt.s: src/prompt.cxx.s
 
 # target to generate assembly for a file
 src/prompt.cxx.s:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/prompt.cxx.s
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/prompt.cxx.s
 .PHONY : src/prompt.cxx.s
 
 src/replxx.o: src/replxx.cxx.o
@@ -301,7 +301,7 @@ src/replxx.o: src/replxx.cxx.o
 
 # target to build an object file
 src/replxx.cxx.o:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/replxx.cxx.o
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/replxx.cxx.o
 .PHONY : src/replxx.cxx.o
 
 src/replxx.i: src/replxx.cxx.i
@@ -309,7 +309,7 @@ src/replxx.i: src/replxx.cxx.i
 
 # target to preprocess a source file
 src/replxx.cxx.i:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/replxx.cxx.i
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/replxx.cxx.i
 .PHONY : src/replxx.cxx.i
 
 src/replxx.s: src/replxx.cxx.s
@@ -317,7 +317,7 @@ src/replxx.s: src/replxx.cxx.s
 
 # target to generate assembly for a file
 src/replxx.cxx.s:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/replxx.cxx.s
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/replxx.cxx.s
 .PHONY : src/replxx.cxx.s
 
 src/replxx_impl.o: src/replxx_impl.cxx.o
@@ -325,7 +325,7 @@ src/replxx_impl.o: src/replxx_impl.cxx.o
 
 # target to build an object file
 src/replxx_impl.cxx.o:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/replxx_impl.cxx.o
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/replxx_impl.cxx.o
 .PHONY : src/replxx_impl.cxx.o
 
 src/replxx_impl.i: src/replxx_impl.cxx.i
@@ -333,7 +333,7 @@ src/replxx_impl.i: src/replxx_impl.cxx.i
 
 # target to preprocess a source file
 src/replxx_impl.cxx.i:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/replxx_impl.cxx.i
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/replxx_impl.cxx.i
 .PHONY : src/replxx_impl.cxx.i
 
 src/replxx_impl.s: src/replxx_impl.cxx.s
@@ -341,7 +341,7 @@ src/replxx_impl.s: src/replxx_impl.cxx.s
 
 # target to generate assembly for a file
 src/replxx_impl.cxx.s:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/replxx_impl.cxx.s
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/replxx_impl.cxx.s
 .PHONY : src/replxx_impl.cxx.s
 
 src/terminal.o: src/terminal.cxx.o
@@ -349,7 +349,7 @@ src/terminal.o: src/terminal.cxx.o
 
 # target to build an object file
 src/terminal.cxx.o:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/terminal.cxx.o
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/terminal.cxx.o
 .PHONY : src/terminal.cxx.o
 
 src/terminal.i: src/terminal.cxx.i
@@ -357,7 +357,7 @@ src/terminal.i: src/terminal.cxx.i
 
 # target to preprocess a source file
 src/terminal.cxx.i:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/terminal.cxx.i
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/terminal.cxx.i
 .PHONY : src/terminal.cxx.i
 
 src/terminal.s: src/terminal.cxx.s
@@ -365,7 +365,7 @@ src/terminal.s: src/terminal.cxx.s
 
 # target to generate assembly for a file
 src/terminal.cxx.s:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/terminal.cxx.s
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/terminal.cxx.s
 .PHONY : src/terminal.cxx.s
 
 src/util.o: src/util.cxx.o
@@ -373,7 +373,7 @@ src/util.o: src/util.cxx.o
 
 # target to build an object file
 src/util.cxx.o:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/util.cxx.o
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/util.cxx.o
 .PHONY : src/util.cxx.o
 
 src/util.i: src/util.cxx.i
@@ -381,7 +381,7 @@ src/util.i: src/util.cxx.i
 
 # target to preprocess a source file
 src/util.cxx.i:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/util.cxx.i
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/util.cxx.i
 .PHONY : src/util.cxx.i
 
 src/util.s: src/util.cxx.s
@@ -389,7 +389,7 @@ src/util.s: src/util.cxx.s
 
 # target to generate assembly for a file
 src/util.cxx.s:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/util.cxx.s
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/util.cxx.s
 .PHONY : src/util.cxx.s
 
 src/wcwidth.o: src/wcwidth.cpp.o
@@ -397,7 +397,7 @@ src/wcwidth.o: src/wcwidth.cpp.o
 
 # target to build an object file
 src/wcwidth.cpp.o:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/wcwidth.cpp.o
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/wcwidth.cpp.o
 .PHONY : src/wcwidth.cpp.o
 
 src/wcwidth.i: src/wcwidth.cpp.i
@@ -405,7 +405,7 @@ src/wcwidth.i: src/wcwidth.cpp.i
 
 # target to preprocess a source file
 src/wcwidth.cpp.i:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/wcwidth.cpp.i
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/wcwidth.cpp.i
 .PHONY : src/wcwidth.cpp.i
 
 src/wcwidth.s: src/wcwidth.cpp.s
@@ -413,7 +413,7 @@ src/wcwidth.s: src/wcwidth.cpp.s
 
 # target to generate assembly for a file
 src/wcwidth.cpp.s:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/wcwidth.cpp.s
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/wcwidth.cpp.s
 .PHONY : src/wcwidth.cpp.s
 
 src/windows.o: src/windows.cxx.o
@@ -421,7 +421,7 @@ src/windows.o: src/windows.cxx.o
 
 # target to build an object file
 src/windows.cxx.o:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/windows.cxx.o
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/windows.cxx.o
 .PHONY : src/windows.cxx.o
 
 src/windows.i: src/windows.cxx.i
@@ -429,7 +429,7 @@ src/windows.i: src/windows.cxx.i
 
 # target to preprocess a source file
 src/windows.cxx.i:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/windows.cxx.i
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/windows.cxx.i
 .PHONY : src/windows.cxx.i
 
 src/windows.s: src/windows.cxx.s
@@ -437,7 +437,7 @@ src/windows.s: src/windows.cxx.s
 
 # target to generate assembly for a file
 src/windows.cxx.s:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/windows.cxx.s
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(MAKE) $(MAKESILENT) -f _deps/replxx-build/CMakeFiles/replxx.dir/build.make _deps/replxx-build/CMakeFiles/replxx.dir/src/windows.cxx.s
 .PHONY : src/windows.cxx.s
 
 # Help Target
@@ -497,7 +497,7 @@ help:
 # No rule that depends on this can have commands that come from listfiles
 # because they might be regenerated.
 cmake_check_build_system:
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(CMAKE_COMMAND) -P /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/CMakeFiles/VerifyGlobs.cmake
-	cd /home/omarabdo/Desktop/AkatsukiDB-Cpp/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(CMAKE_COMMAND) -P /home/omarabdo/Desktop/AkatsukiDB/build/CMakeFiles/VerifyGlobs.cmake
+	cd /home/omarabdo/Desktop/AkatsukiDB/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
 .PHONY : cmake_check_build_system
 

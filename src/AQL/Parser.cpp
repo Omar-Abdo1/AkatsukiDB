@@ -350,8 +350,15 @@ JoinClause Parser::ParseJoin() {
 std::vector<std::string> Parser::ParseGroupBy() {
     std::vector<std::string> result;
     do {
-        result.push_back(Expect(TokenType::Identifier).GetValue());
-        std::transform(result.back().begin(), result.back().end(), result.back().begin(), ::tolower);
+        std::string colName = Expect(TokenType::Identifier).GetValue();
+        std::transform(colName.begin(), colName.end(), colName.begin(), ::tolower);
+        if (!IsAtEnd() && Current().GetType()==TokenType::Dot) {
+            ++_pos;
+            std::string col2 = Expect(TokenType::Identifier).GetValue();
+            std::transform(col2.begin(), col2.end(), col2.begin(), ::tolower);
+            colName = colName + "." + col2;   // "e" + "." + "salary"
+        }
+        result.push_back(colName);
     } while (Match(","));
     return result;
 }
@@ -359,9 +366,16 @@ std::vector<std::string> Parser::ParseGroupBy() {
 std::vector<OrderByClause> Parser::ParseOrderBy() {
     std::vector<OrderByClause> result;
     do {
+        std::string colName = Expect(TokenType::Identifier).GetValue();
+        std::transform(colName.begin(), colName.end(), colName.begin(), ::tolower);
+        if (!IsAtEnd() && Current().GetType()==TokenType::Dot) {
+            ++_pos;
+            std::string col2 = Expect(TokenType::Identifier).GetValue();
+            std::transform(col2.begin(), col2.end(), col2.begin(), ::tolower);
+            colName = colName + "." + col2;   // "e" + "." + "salary"
+        }
         OrderByClause ob;
-        ob.Column = Expect(TokenType::Identifier).GetValue();
-        std::transform(ob.Column.begin(), ob.Column.end(), ob.Column.begin(), ::tolower);
+        ob.Column = colName;
         ob.Descending = Match("desc");
         result.push_back(ob);
     } while (Match(","));
@@ -662,20 +676,22 @@ std::unique_ptr<Expression> Parser::ParseFunction() {
     std::transform(name.begin(), name.end(), name.begin(), ::tolower);
     ++_pos;
     Expect("(");
-    std::unique_ptr<Expression> args;
+
+    auto func  = std::make_unique<FunctionExpr>();
+    func->Name = name;
+
     if (!Match(")")) {
+        do {
             if (Current().GetType() == TokenType::Star) {
-                auto star = std::make_unique<ColumnRef>();
+                auto star    = std::make_unique<ColumnRef>();
                 star->Column = "*";
-                args = std::move(star);
+                func->Arguments.push_back(std::move(star));
                 ++_pos;
             } else {
-                args= ParseExpression();
+                func->Arguments.push_back(ParseExpression());
             }
+        } while (Match(","));
         Expect(")");
     }
-    auto func = std::make_unique<FunctionExpr>();
-    func->Name = name;
-    func->Arguments = std::move(args);
     return func;
 }

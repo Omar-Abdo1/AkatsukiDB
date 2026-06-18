@@ -1,7 +1,7 @@
 CMakeFiles/AkatsukiDB_lib.dir/src/Table/TableRegistry.cpp.o: \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/src/Table/TableRegistry.cpp \
+ /home/omarabdo/Desktop/AkatsukiDB/src/Table/TableRegistry.cpp \
  /usr/include/stdc-predef.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Table/TableRegistry.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Table/TableRegistry.hpp \
  /usr/include/c++/13/unordered_map \
  /usr/include/c++/13/bits/requires_hosted.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
@@ -65,7 +65,7 @@ CMakeFiles/AkatsukiDB_lib.dir/src/Table/TableRegistry.cpp.o: \
  /usr/include/c++/13/bits/stl_vector.h \
  /usr/include/c++/13/bits/stl_bvector.h \
  /usr/include/c++/13/bits/refwrap.h /usr/include/c++/13/bits/vector.tcc \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Storage/StorageLayout.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Storage/StorageLayout.hpp \
  /usr/include/c++/13/filesystem /usr/include/c++/13/bits/fs_fwd.h \
  /usr/include/c++/13/system_error \
  /usr/include/x86_64-linux-gnu/c++/13/bits/error_constants.h \
@@ -191,8 +191,8 @@ CMakeFiles/AkatsukiDB_lib.dir/src/Table/TableRegistry.cpp.o: \
  /usr/include/c++/13/bits/allocated_ptr.h \
  /usr/include/c++/13/bits/unique_ptr.h /usr/include/c++/13/bits/align.h \
  /usr/include/c++/13/bits/fs_dir.h /usr/include/c++/13/bits/fs_ops.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Table/TableDefinition.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Table/ColumnDefinition.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Table/TableDefinition.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Table/ColumnDefinition.hpp \
  /usr/include/c++/13/optional /usr/include/c++/13/variant \
  /usr/include/c++/13/fstream \
  /usr/include/x86_64-linux-gnu/c++/13/bits/basic_file.h \
@@ -207,7 +207,9 @@ CMakeFiles/AkatsukiDB_lib.dir/src/Table/TableRegistry.cpp.o: \
  /usr/include/c++/13/bits/ranges_algobase.h \
  /usr/include/c++/13/pstl/glue_algorithm_defs.h \
  /usr/include/c++/13/pstl/execution_defs.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/json.hpp \
+ /usr/include/c++/13/unordered_set \
+ /usr/include/c++/13/bits/unordered_set.h \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/json.hpp \
  /usr/include/c++/13/functional /usr/include/c++/13/bits/std_function.h \
  /usr/include/c++/13/array /usr/include/c++/13/iterator \
  /usr/include/c++/13/bits/stream_iterator.h /usr/include/c++/13/memory \
@@ -240,9 +242,9 @@ CMakeFiles/AkatsukiDB_lib.dir/src/Table/TableRegistry.cpp.o: \
  /usr/include/c++/13/bits/ranges_uninitialized.h \
  /usr/include/c++/13/pstl/glue_memory_defs.h /usr/include/c++/13/utility \
  /usr/include/c++/13/bits/stl_relops.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/adl_serializer.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/abi_macros.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/conversions/from_json.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/adl_serializer.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/abi_macros.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/conversions/from_json.hpp \
  /usr/include/c++/13/forward_list /usr/include/c++/13/bits/forward_list.h \
  /usr/include/c++/13/bits/forward_list.tcc /usr/include/c++/13/map \
  /usr/include/c++/13/bits/stl_tree.h /usr/include/c++/13/bits/stl_map.h \
@@ -278,51 +280,51 @@ CMakeFiles/AkatsukiDB_lib.dir/src/Table/TableRegistry.cpp.o: \
  /usr/include/c++/13/bits/gslice_array.h \
  /usr/include/c++/13/bits/mask_array.h \
  /usr/include/c++/13/bits/indirect_array.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/exceptions.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/value_t.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/macro_scope.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/meta/detected.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/meta/void_t.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/thirdparty/hedley/hedley.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/exceptions.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/value_t.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/macro_scope.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/meta/detected.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/meta/void_t.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/thirdparty/hedley/hedley.hpp \
  /usr/include/c++/13/version /usr/include/c++/13/cassert \
  /usr/include/assert.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/string_escape.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/input/position_t.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/meta/cpp_future.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/meta/type_traits.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/iterators/iterator_traits.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/meta/call_std/begin.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/meta/call_std/end.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/json_fwd.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/string_concat.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/string_escape.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/input/position_t.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/meta/cpp_future.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/meta/type_traits.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/iterators/iterator_traits.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/meta/call_std/begin.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/meta/call_std/end.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/json_fwd.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/string_concat.hpp \
  /usr/include/c++/13/cstring /usr/include/string.h /usr/include/strings.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/meta/identity_tag.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/meta/std_fs.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/conversions/to_json.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/iterators/iteration_proxy.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/meta/identity_tag.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/meta/std_fs.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/conversions/to_json.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/iterators/iteration_proxy.hpp \
  /usr/include/c++/13/ranges /usr/include/c++/13/span \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/byte_container_with_subtype.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/hash.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/input/binary_reader.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/input/input_adapters.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/byte_container_with_subtype.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/hash.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/input/binary_reader.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/input/input_adapters.hpp \
  /usr/include/c++/13/numeric /usr/include/c++/13/bits/stl_numeric.h \
  /usr/include/c++/13/pstl/glue_numeric_defs.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/input/json_sax.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/input/lexer.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/meta/is_sax.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/input/parser.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/iterators/internal_iterator.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/iterators/primitive_iterator.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/iterators/iter_impl.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/iterators/json_reverse_iterator.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/json_custom_base_class.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/json_pointer.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/json_ref.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/output/binary_writer.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/output/output_adapters.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/output/serializer.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/conversions/to_chars.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/ordered_map.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/input/json_sax.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/input/lexer.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/meta/is_sax.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/input/parser.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/iterators/internal_iterator.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/iterators/primitive_iterator.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/iterators/iter_impl.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/iterators/json_reverse_iterator.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/json_custom_base_class.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/json_pointer.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/json_ref.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/output/binary_writer.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/output/output_adapters.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/output/serializer.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/conversions/to_chars.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/ordered_map.hpp \
  /usr/include/c++/13/any \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/detail/macro_unscope.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/json-src/include/nlohmann/thirdparty/hedley/hedley_undef.hpp
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/detail/macro_unscope.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/json-src/include/nlohmann/thirdparty/hedley/hedley_undef.hpp

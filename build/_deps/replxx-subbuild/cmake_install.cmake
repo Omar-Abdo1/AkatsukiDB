@@ -1,4 +1,4 @@
-# Install script for directory: /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-subbuild
+# Install script for directory: /home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-subbuild
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -45,5 +45,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-subbuild/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-subbuild/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

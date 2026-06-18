@@ -1,7 +1,7 @@
 CMakeFiles/AkatsukiDB_lib.dir/src/Table/RowSerializer.cpp.o: \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/src/Table/RowSerializer.cpp \
+ /home/omarabdo/Desktop/AkatsukiDB/src/Table/RowSerializer.cpp \
  /usr/include/stdc-predef.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/src/Table/../../include/AkatsukiDB/Table/RowSerializer.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/src/Table/../../include/AkatsukiDB/Table/RowSerializer.hpp \
  /usr/include/c++/13/cstdint \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \
@@ -137,7 +137,7 @@ CMakeFiles/AkatsukiDB_lib.dir/src/Table/RowSerializer.cpp.o: \
  /usr/include/c++/13/bits/stl_vector.h \
  /usr/include/c++/13/bits/stl_bvector.h \
  /usr/include/c++/13/bits/vector.tcc \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/src/Table/../../include/AkatsukiDB/Table/ColumnDefinition.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/src/Table/../../include/AkatsukiDB/Table/ColumnDefinition.hpp \
  /usr/include/c++/13/optional /usr/include/c++/13/exception \
  /usr/include/c++/13/bits/exception_ptr.h \
  /usr/include/c++/13/bits/cxxabi_init_exception.h \

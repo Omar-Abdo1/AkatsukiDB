@@ -27,7 +27,7 @@ struct JoinClause {
 struct   SelectColumn
 {
  std::unique_ptr<Expression> Column ;
-std::optional<std::string> Alias="";
+std::optional<std::string> Alias;
  bool IsStar= false;
  bool IsWindow =false;
  std::string WindowFunc="" ;  // "row_number", "sum"

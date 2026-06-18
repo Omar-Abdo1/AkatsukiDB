@@ -1,8 +1,8 @@
 CMakeFiles/AkatsukiDB_lib.dir/src/Table/TableManager.cpp.o: \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/src/Table/TableManager.cpp \
+ /home/omarabdo/Desktop/AkatsukiDB/src/Table/TableManager.cpp \
  /usr/include/stdc-predef.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/src/Table/../../include/AkatsukiDB/Table/TableManager.hpp \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Storage/BufferPool.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/src/Table/../../include/AkatsukiDB/Table/TableManager.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Storage/BufferPool.hpp \
  /usr/include/c++/13/memory /usr/include/c++/13/bits/memoryfwd.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \
@@ -197,7 +197,7 @@ CMakeFiles/AkatsukiDB_lib.dir/src/Table/TableManager.cpp.o: \
  /usr/include/c++/13/bits/ranges_algobase.h \
  /usr/include/c++/13/pstl/glue_memory_defs.h \
  /usr/include/c++/13/pstl/execution_defs.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Storage/LruCache.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Storage/LruCache.hpp \
  /usr/include/c++/13/functional /usr/include/c++/13/bits/std_function.h \
  /usr/include/c++/13/unordered_map \
  /usr/include/c++/13/bits/unordered_map.h \
@@ -213,9 +213,9 @@ CMakeFiles/AkatsukiDB_lib.dir/src/Table/TableManager.cpp.o: \
  /usr/include/c++/13/bits/algorithmfwd.h \
  /usr/include/c++/13/bits/stl_heap.h \
  /usr/include/c++/13/bits/uniform_int_dist.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Storage/Page.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Storage/Page.hpp \
  /usr/include/c++/13/span \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/include/AkatsukiDB/Storage/PageManager.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/include/AkatsukiDB/Storage/PageManager.hpp \
  /usr/include/c++/13/fstream /usr/include/c++/13/istream \
  /usr/include/c++/13/bits/istream.tcc /usr/include/c++/13/bits/codecvt.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/basic_file.h \

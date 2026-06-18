@@ -1,7 +1,7 @@
 CMakeFiles/AkatsukiDB_lib.dir/src/Storage/LruCache.cpp.o: \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/src/Storage/LruCache.cpp \
+ /home/omarabdo/Desktop/AkatsukiDB/src/Storage/LruCache.cpp \
  /usr/include/stdc-predef.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/src/Storage/../../include/AkatsukiDB/Storage/LruCache.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/src/Storage/../../include/AkatsukiDB/Storage/LruCache.hpp \
  /usr/include/c++/13/functional \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \
@@ -213,5 +213,5 @@ CMakeFiles/AkatsukiDB_lib.dir/src/Storage/LruCache.cpp.o: \
  /usr/include/c++/13/bits/ranges_algobase.h \
  /usr/include/c++/13/pstl/glue_memory_defs.h \
  /usr/include/c++/13/pstl/execution_defs.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/src/Storage/../../include/AkatsukiDB/Storage/Page.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/src/Storage/../../include/AkatsukiDB/Storage/Page.hpp \
  /usr/include/c++/13/span

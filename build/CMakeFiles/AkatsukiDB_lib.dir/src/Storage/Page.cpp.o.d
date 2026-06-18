@@ -1,7 +1,7 @@
 CMakeFiles/AkatsukiDB_lib.dir/src/Storage/Page.cpp.o: \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/src/Storage/Page.cpp \
+ /home/omarabdo/Desktop/AkatsukiDB/src/Storage/Page.cpp \
  /usr/include/stdc-predef.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/src/Storage/../../include/AkatsukiDB/Storage/Page.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/src/Storage/../../include/AkatsukiDB/Storage/Page.hpp \
  /usr/include/c++/13/cstdint \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \

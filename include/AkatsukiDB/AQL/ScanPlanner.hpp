@@ -4,8 +4,11 @@
 #include "AkatsukiDB/Table/TableDefinition.hpp"
 #include "AkatsukiDB/Expressions/Expression.hpp"
 #include <unordered_map>
+#include <utility>
 #include <vector>
 #include <string>
+
+#include "AkatsukiDB/Table/TableRegistry.hpp"
 
 enum class ScanType { Full, Point, Range };
 
@@ -25,15 +28,22 @@ public:
     using IndexMap = std::unordered_map<std::string,
         std::vector<std::pair<IndexDefinition, std::unique_ptr<BPlusTree>>>>;
 
-    explicit ScanPlanner(IndexMap& indexes) : _indexes(indexes) {}
+    TableRegistry &_registry;
+
+    explicit ScanPlanner(IndexMap& indexes, TableRegistry &registry) : _indexes(indexes) , _registry(registry) {}
 
     ScanPlan Decide(const std::string& table, Expression* where);
+
+
+
 
 private:
     IndexMap& _indexes;
 
     bool TryIndex(const std::string& table, Expression* expr, ScanPlan& out);
     void FlatAnd(std::vector<Expression*>& exprs,Expression* expr);
+
+    bool BelongsToTable(Expression* expr, const std::string& table);
 
     bool TryPoint  (Expression* expr, std::string& col, DbObject& val);
     bool TryBetween(Expression* expr, std::string& col, DbObject& lo, DbObject& hi);

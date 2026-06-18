@@ -1,5 +1,5 @@
 _deps/replxx-build/CMakeFiles/replxx.dir/src/util.cxx.o: \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-src/src/util.cxx \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-src/src/util.cxx \
  /usr/include/stdc-predef.h /usr/include/c++/13/chrono \
  /usr/include/c++/13/bits/requires_hosted.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
@@ -204,8 +204,8 @@ _deps/replxx-build/CMakeFiles/replxx.dir/src/util.cxx.o: \
  /usr/include/string.h /usr/include/strings.h \
  /usr/include/x86_64-linux-gnu/bits/strings_fortified.h \
  /usr/include/x86_64-linux-gnu/bits/string_fortified.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-src/src/util.hxx \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-src/include/replxx.hxx \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-src/src/util.hxx \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-src/include/replxx.hxx \
  /usr/include/c++/13/memory \
  /usr/include/c++/13/bits/stl_raw_storage_iter.h \
  /usr/include/c++/13/bits/shared_ptr_atomic.h \
@@ -245,7 +245,7 @@ _deps/replxx-build/CMakeFiles/replxx.dir/src/util.cxx.o: \
  /usr/include/c++/13/bits/hashtable_policy.h \
  /usr/include/c++/13/bits/node_handle.h \
  /usr/include/c++/13/bits/erase_if.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-src/src/terminal.hxx \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-src/src/terminal.hxx \
  /usr/include/c++/13/deque /usr/include/c++/13/bits/stl_deque.h \
  /usr/include/c++/13/bits/deque.tcc /usr/include/termios.h \
  /usr/include/x86_64-linux-gnu/bits/termios.h \
@@ -259,9 +259,9 @@ _deps/replxx-build/CMakeFiles/replxx.dir/src/util.cxx.o: \
  /usr/include/x86_64-linux-gnu/bits/termios-tcflow.h \
  /usr/include/x86_64-linux-gnu/bits/termios-misc.h \
  /usr/include/x86_64-linux-gnu/sys/ttydefaults.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-src/src/utf8string.hxx \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-src/src/unicodestring.hxx \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-src/src/utf8string.hxx \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-src/src/unicodestring.hxx \
  /usr/include/c++/13/cassert /usr/include/assert.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-src/src/conversion.hxx \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-src/src/ConvertUTF.h \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-src/src/conversion.hxx \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-src/src/ConvertUTF.h \
  /usr/include/c++/13/version

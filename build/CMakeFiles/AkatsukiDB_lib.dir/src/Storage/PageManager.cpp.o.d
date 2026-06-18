@@ -1,7 +1,7 @@
 CMakeFiles/AkatsukiDB_lib.dir/src/Storage/PageManager.cpp.o: \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/src/Storage/PageManager.cpp \
+ /home/omarabdo/Desktop/AkatsukiDB/src/Storage/PageManager.cpp \
  /usr/include/stdc-predef.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/src/Storage/../../include/AkatsukiDB/Storage/PageManager.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/src/Storage/../../include/AkatsukiDB/Storage/PageManager.hpp \
  /usr/include/c++/13/fstream /usr/include/c++/13/bits/requires_hosted.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h \
@@ -202,7 +202,7 @@ CMakeFiles/AkatsukiDB_lib.dir/src/Storage/PageManager.cpp.o: \
  /usr/include/c++/13/bits/ranges_algobase.h \
  /usr/include/c++/13/pstl/glue_memory_defs.h \
  /usr/include/c++/13/pstl/execution_defs.h \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/src/Storage/../../include/AkatsukiDB/Storage/Page.hpp \
+ /home/omarabdo/Desktop/AkatsukiDB/src/Storage/../../include/AkatsukiDB/Storage/Page.hpp \
  /usr/include/c++/13/span /usr/include/c++/13/array \
  /usr/include/c++/13/vector /usr/include/c++/13/bits/stl_vector.h \
  /usr/include/c++/13/bits/stl_bvector.h \

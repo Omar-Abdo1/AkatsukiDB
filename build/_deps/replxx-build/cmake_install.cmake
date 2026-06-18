@@ -1,4 +1,4 @@
-# Install script for directory: /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-src
+# Install script for directory: /home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-src
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -43,14 +43,14 @@ if(NOT DEFINED CMAKE_OBJDUMP)
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE STATIC_LIBRARY FILES "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-build/libreplxx.a")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE STATIC_LIBRARY FILES "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-build/libreplxx.a")
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
   if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/share/cmake/replxx/replxx-targets.cmake")
     file(DIFFERENT _cmake_export_file_changed FILES
          "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/share/cmake/replxx/replxx-targets.cmake"
-         "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-build/CMakeFiles/Export/c4e09753e41b6a7ff5db96aced3a93ff/replxx-targets.cmake")
+         "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-build/CMakeFiles/Export/c4e09753e41b6a7ff5db96aced3a93ff/replxx-targets.cmake")
     if(_cmake_export_file_changed)
       file(GLOB _cmake_old_config_files "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/share/cmake/replxx/replxx-targets-*.cmake")
       if(_cmake_old_config_files)
@@ -63,23 +63,23 @@ if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT
     endif()
     unset(_cmake_export_file_changed)
   endif()
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/cmake/replxx" TYPE FILE FILES "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-build/CMakeFiles/Export/c4e09753e41b6a7ff5db96aced3a93ff/replxx-targets.cmake")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/cmake/replxx" TYPE FILE FILES "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-build/CMakeFiles/Export/c4e09753e41b6a7ff5db96aced3a93ff/replxx-targets.cmake")
   if(CMAKE_INSTALL_CONFIG_NAME MATCHES "^([Rr][Ee][Ll][Ee][Aa][Ss][Ee])$")
-    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/cmake/replxx" TYPE FILE FILES "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-build/CMakeFiles/Export/c4e09753e41b6a7ff5db96aced3a93ff/replxx-targets-release.cmake")
+    file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/cmake/replxx" TYPE FILE FILES "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-build/CMakeFiles/Export/c4e09753e41b6a7ff5db96aced3a93ff/replxx-targets-release.cmake")
   endif()
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
   file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/cmake/replxx" TYPE FILE FILES
-    "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-build/replxx-config-version.cmake"
-    "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-build/replxx-config.cmake"
+    "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-build/replxx-config-version.cmake"
+    "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-build/replxx-config.cmake"
     )
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
   file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include" TYPE FILE FILES
-    "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-src/include/replxx.hxx"
-    "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-src/include/replxx.h"
+    "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-src/include/replxx.hxx"
+    "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-src/include/replxx.h"
     )
 endif()
 

@@ -2,37 +2,37 @@
 	"sources" : 
 	[
 		{
-			"file" : "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-subbuild/CMakeFiles/replxx-populate"
+			"file" : "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-subbuild/CMakeFiles/replxx-populate"
 		},
 		{
-			"file" : "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-subbuild/CMakeFiles/replxx-populate.rule"
+			"file" : "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-subbuild/CMakeFiles/replxx-populate.rule"
 		},
 		{
-			"file" : "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-subbuild/CMakeFiles/replxx-populate-complete.rule"
+			"file" : "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-subbuild/CMakeFiles/replxx-populate-complete.rule"
 		},
 		{
-			"file" : "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-subbuild/replxx-populate-prefix/src/replxx-populate-stamp/replxx-populate-build.rule"
+			"file" : "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-subbuild/replxx-populate-prefix/src/replxx-populate-stamp/replxx-populate-build.rule"
 		},
 		{
-			"file" : "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-subbuild/replxx-populate-prefix/src/replxx-populate-stamp/replxx-populate-configure.rule"
+			"file" : "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-subbuild/replxx-populate-prefix/src/replxx-populate-stamp/replxx-populate-configure.rule"
 		},
 		{
-			"file" : "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-subbuild/replxx-populate-prefix/src/replxx-populate-stamp/replxx-populate-download.rule"
+			"file" : "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-subbuild/replxx-populate-prefix/src/replxx-populate-stamp/replxx-populate-download.rule"
 		},
 		{
-			"file" : "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-subbuild/replxx-populate-prefix/src/replxx-populate-stamp/replxx-populate-install.rule"
+			"file" : "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-subbuild/replxx-populate-prefix/src/replxx-populate-stamp/replxx-populate-install.rule"
 		},
 		{
-			"file" : "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-subbuild/replxx-populate-prefix/src/replxx-populate-stamp/replxx-populate-mkdir.rule"
+			"file" : "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-subbuild/replxx-populate-prefix/src/replxx-populate-stamp/replxx-populate-mkdir.rule"
 		},
 		{
-			"file" : "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-subbuild/replxx-populate-prefix/src/replxx-populate-stamp/replxx-populate-patch.rule"
+			"file" : "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-subbuild/replxx-populate-prefix/src/replxx-populate-stamp/replxx-populate-patch.rule"
 		},
 		{
-			"file" : "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-subbuild/replxx-populate-prefix/src/replxx-populate-stamp/replxx-populate-test.rule"
+			"file" : "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-subbuild/replxx-populate-prefix/src/replxx-populate-stamp/replxx-populate-test.rule"
 		},
 		{
-			"file" : "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-subbuild/replxx-populate-prefix/src/replxx-populate-stamp/replxx-populate-update.rule"
+			"file" : "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-subbuild/replxx-populate-prefix/src/replxx-populate-stamp/replxx-populate-update.rule"
 		}
 	],
 	"target" : 

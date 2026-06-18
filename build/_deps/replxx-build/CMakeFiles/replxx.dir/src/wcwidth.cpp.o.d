@@ -1,5 +1,5 @@
 _deps/replxx-build/CMakeFiles/replxx.dir/src/wcwidth.cpp.o: \
- /home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-src/src/wcwidth.cpp \
+ /home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-src/src/wcwidth.cpp \
  /usr/include/stdc-predef.h /usr/include/wchar.h \
  /usr/include/x86_64-linux-gnu/bits/libc-header-start.h \
  /usr/include/features.h /usr/include/features-time64.h \

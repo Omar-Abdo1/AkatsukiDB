@@ -34,7 +34,7 @@ QueryResult Executor::ExecuteCreateTable(CreateTableStatement& stmt) {
         std::transform(refTable.begin(), refTable.end(), refTable.begin(), ::tolower);
         if (!_registry.TableExists(refTable))
             return QueryResult::Error("FK reference Table " + fk.RefTable + " not found");
-        const auto& fkDef = _registry.GetTable(refTable);
+         auto& fkDef = _registry.GetTable(refTable);
         bool colFound = false;
         for (const auto& col : fkDef.Columns) {
             if (col.Name == fk.RefColumn) {
@@ -55,10 +55,18 @@ QueryResult Executor::ExecuteCreateTable(CreateTableStatement& stmt) {
             return QueryResult::Error("FK reference " + fk.RefColumn + "." + fk.RefTable + " is not PRIMARY KEY");
     }
 
+
     // Create the table definition (writes JSON schema)
-    auto def = _registry.CreateTable(stmt.TableName, stmt.Columns, stmt.PrimaryKey,
+    auto &def = _registry.CreateTable(stmt.TableName, stmt.Columns, stmt.PrimaryKey,
                                      stmt.AutoIncrement, stmt.ForeignKeys);
     OpenTable(def.Name);  // creates .tbl file and loads indexes (none initially)
+
+    for (const auto& fk : stmt.ForeignKeys) {
+        std::string refTable = fk.RefTable;
+        std::transform(refTable.begin(), refTable.end(), refTable.begin(), ::tolower);
+        _referencedBy[refTable].push_back({def.Name, fk});
+    }
+
     return QueryResult::Affected(0, "Table '" + def.Name + "' created.");
 }
 
@@ -71,7 +79,7 @@ QueryResult Executor::ExecuteCreateIndex(CreateIndexStatement& stmt) {
     if (!_registry.TableExists(tableName))
         return QueryResult::Error("Table Name " + stmt.TableName + " not found");
 
-    const auto& def = _registry.GetTable(tableName);
+     auto& def = _registry.GetTable(tableName);
     std::unordered_set<std::string> colNames;
     for (const auto& col : def.Columns) {
         std::string lower = col.Name;
@@ -85,7 +93,7 @@ QueryResult Executor::ExecuteCreateIndex(CreateIndexStatement& stmt) {
             return QueryResult::Error("Column " + col + " Not Found");
     }
 
-    auto& tm = *_tables[tableName];
+    TableManager* tm = _tables[tableName].get();
 
     // Check if index already exists
     auto it = _indexes.find(tableName);
@@ -105,25 +113,25 @@ QueryResult Executor::ExecuteCreateIndex(CreateIndexStatement& stmt) {
     std::string idxPath = _layout.IndexFile(indexName);
     auto tree = std::make_unique<BPlusTree>(idxPath);
 
-    // Populate index from existing rows
-    auto entries = tm.FullScan();
+    auto entries = tm->FullScan();
     for (const auto& entry : entries) {
         auto row = RowSerializer::Deserialize(entry.Bytes, def.Columns);
         auto key = BuildKeyForTree(row, stmt.Columns);
         if (stmt.IsUnique) {
             auto res = tree->PointQuery(key);
             if (!res.empty()) {
-                tree.reset(); // destructor will close/delete?
-                if (std::filesystem::exists(idxPath)) std::filesystem::remove(idxPath);
-                return QueryResult::Error("Cannot Create UNIQUE Index - duplicate values exist in " + stmt.Columns[0]);
+                tree.reset();  // destructor flushes and closes the file
+                if (std::filesystem::exists(idxPath))
+                    std::filesystem::remove(idxPath);
+                return QueryResult::Error("Cannot create unique index – duplicate values exist.");
             }
         }
         tree->Insert({key, entry.PageId, static_cast<short>(entry.SlotIndex)});
+
     }
 
-
     // Save index definition to table schema
-    TableDefinition defCopy = _registry.GetTable(tableName);
+    auto & defCopy = _registry.GetTable(tableName);
 
     defCopy.Indexes.push_back(idxDef);
 

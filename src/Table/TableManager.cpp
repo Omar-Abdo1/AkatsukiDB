@@ -94,6 +94,7 @@ std::vector<uint8_t> TableManager::ReadRow(int pageId, int slotIndex) {
     return std::vector<uint8_t>(slotSpan.begin(), slotSpan.end());
 }
 
+
 void TableManager::UpdateRow(int pageId, int slotIndex, std::span<const uint8_t> newRowBytes) {
     auto page = _bufferPool->GetPage(pageId);
     auto slotSpan = page->GetSlot(slotIndex, _rowSizeBytes);

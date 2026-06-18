@@ -28,8 +28,8 @@ set_property(GLOBAL PROPERTY _CMAKE_FindGit_GIT_EXECUTABLE_VERSION
 include(ExternalProject)
 ExternalProject_Add(replxx-populate
                      "UPDATE_DISCONNECTED" "False" "GIT_REPOSITORY" "https://github.com/AmokHuginnsson/replxx.git" "EXTERNALPROJECT_INTERNAL_ARGUMENT_SEPARATOR" "GIT_TAG" "master"
-                    SOURCE_DIR          "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-src"
-                    BINARY_DIR          "/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-build"
+                    SOURCE_DIR          "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-src"
+                    BINARY_DIR          "/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-build"
                     CONFIGURE_COMMAND   ""
                     BUILD_COMMAND       ""
                     INSTALL_COMMAND     ""

@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/c++
 CXX_DEFINES = -DREPLXX_STATIC
 
-CXX_INCLUDES = -I/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-src/include -I/home/omarabdo/Desktop/AkatsukiDB-Cpp/build/_deps/replxx-src/src
+CXX_INCLUDES = -I/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-src/include -I/home/omarabdo/Desktop/AkatsukiDB/build/_deps/replxx-src/src
 
-CXX_FLAGS = -O3 -DNDEBUG -std=gnu++20 -Wall -Wextra -Wno-unknown-pragmas
+CXX_FLAGS =  -fsanitize=address -g -O0 -fno-omit-frame-pointer -O3 -DNDEBUG -std=gnu++20 -Wall -Wextra -Wno-unknown-pragmas
 

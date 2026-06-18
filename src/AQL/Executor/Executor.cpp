@@ -17,7 +17,7 @@ Executor::Executor(TableRegistry& registry,
     , _indexes(indexes)
     , _referencedBy(referencedBy)
     , _validator(registry),
-   _scanPlanner(indexes)
+   _scanPlanner(indexes,registry)
 {}
 
 QueryResult Executor::Execute(IStatement& stmt) {
@@ -76,36 +76,43 @@ IndexKey Executor::BuildKeyForTree(const std::unordered_map<std::string, DbObjec
     return IndexKey(std::span<const DbObject>(values));
 }
 
-std::vector<DbRow> Executor::GetRowEntries(TableManager& tm,
-    const TableDefinition& def, const ScanPlan& plan)
+std::vector<ScannedRow> Executor::GetScannedRows(
+    TableManager& tm, const TableDefinition& def, const ScanPlan& plan)
 {
-    std::vector<RowEntry> entries;
-
-    if (plan.Type == ScanType::Point && plan.Index) {
-        auto locs = plan.Index->PointQuery(plan.PointKey);
-        for (auto& [pid, slot] : locs) {
-            auto bytes = tm.ReadRow(pid, slot);
-            entries.push_back({pid, slot, std::move(bytes)});
+    if (plan.Type == ScanType::Full) {
+        std::vector<ScannedRow> result;
+        for (auto& entry : tm.FullScan()) {
+            auto row = RowSerializer::Deserialize(entry.Bytes, def.Columns);
+            if (PassesFilter(row, plan))
+                result.push_back({entry.PageId, entry.SlotIndex, std::move(row)});
         }
-    } else if (plan.Type == ScanType::Range && plan.Index) {
-        auto locs = plan.Index->RangeQuery(plan.RangeStart, plan.RangeEnd,
-                                           plan.RangeStartOpen, plan.RangeEndOpen);
-        for (auto& [pid, slot] : locs) {
-            auto bytes = tm.ReadRow(pid, slot);
-            entries.push_back({pid, slot, std::move(bytes)});
-        }
-    } else {
-        entries = tm.FullScan();
+        return result;
     }
 
-    // Deserialize and apply post‑scan filters
-    std::vector<DbRow> filtered;
-    for (auto& entry : entries) {
-        auto row = RowSerializer::Deserialize(entry.Bytes, def.Columns);
+    std::vector<std::pair<int, short>> locs;
+    if (plan.Type == ScanType::Point && plan.Index)
+        locs = plan.Index->PointQuery(plan.PointKey);
+    else if (plan.Type == ScanType::Range && plan.Index)
+        locs = plan.Index->RangeQuery(plan.RangeStart, plan.RangeEnd,
+            plan.RangeStartOpen, plan.RangeEndOpen);
+
+    std::sort(locs.begin(), locs.end());
+
+    std::vector<ScannedRow> result;
+    int currentPageId = -1;
+    std::shared_ptr<Page> currentPage;
+
+    for (auto& [pid, slot] : locs) {
+        if (pid != currentPageId) {
+            currentPage   = tm.GetPageDirect(pid);
+            currentPageId = pid;
+        }
+        auto slotSpan = currentPage->GetSlot(slot, tm.RowSizeBytes());
+        auto row = RowSerializer::Deserialize(slotSpan, def.Columns);
         if (PassesFilter(row, plan))
-            filtered.push_back(std::move(row));
+            result.push_back({pid, slot, std::move(row)});
     }
-    return filtered;
+    return result;
 }
 
 bool Executor::PassesFilter(const DbRow& row, const ScanPlan& plan) {
@@ -116,7 +123,6 @@ bool Executor::PassesFilter(const DbRow& row, const ScanPlan& plan) {
     return true;
 }
 
-// Executor for SHOW statements
 QueryResult Executor::ExecuteShow(ShowStatement& stmt) {
     std::string what = stmt.What;
     std::transform(what.begin(), what.end(), what.begin(), ::tolower);
@@ -131,10 +137,10 @@ QueryResult Executor::ExecuteShow(ShowStatement& stmt) {
 
 QueryResult Executor::ShowTables() {
     auto names = _registry.GetAllTableNames();
-    std::vector<std::unordered_map<std::string, DbObject>> rows;
+    std::vector<DbRow> rows;
     rows.reserve(names.size());
     for (const auto& n : names) {
-        rows.push_back({{"table_name", n}});
+        rows.push_back({{"table_name", n}}); // [table_name] = employee
     }
     return QueryResult::Success({"table_name"}, std::move(rows));
 }
@@ -145,9 +151,9 @@ QueryResult Executor::ShowSchema(const std::string& tableName) {
     if (!_registry.TableExists(lower))
         return QueryResult::Error("Table '" + tableName + "' not found.");
     const auto& def = _registry.GetTable(lower);
-    std::vector<std::unordered_map<std::string, DbObject>> rows;
-    rows.reserve(def.Columns.size());
-    for (const auto& col : def.Columns) {
+    std::vector<DbRow> rows;
+    rows.reserve(def.Columns.size()); // we have 4 colums and cols.size() rows
+     for (const auto& col : def.Columns) {
         rows.push_back({
             {"column", col.Name},
             {"type", col.Type},
@@ -164,7 +170,7 @@ QueryResult Executor::ShowIndexes(const std::string& tableName) {
     if (!_registry.TableExists(lower))
         return QueryResult::Error("Table '" + tableName + "' not found.");
     const auto& def = _registry.GetTable(lower);
-    std::vector<std::unordered_map<std::string, DbObject>> rows;
+    std::vector<DbRow> rows;
     rows.reserve(def.Indexes.size());
     for (const auto& idx : def.Indexes) {
         std::string colsStr;

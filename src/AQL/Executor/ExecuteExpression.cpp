@@ -2,13 +2,16 @@
 // Created by omarabdo on 6/12/26.
 //
 
+#include <cmath>
+
 #include "AkatsukiDB/AQL/Executor.hpp"
 #include "AkatsukiDB/Expressions/Expression.hpp"
 
 
 
-
-bool Executor::EvaluateBool(Expression& expr, const std::unordered_map<std::string, DbObject>& row) {
+    //see if the current row validate the current row
+    // always walk on the tree for each row + one walk for validation (n+1)
+bool Executor::EvaluateBool(Expression& expr, const DbRow& row) {
     if (auto* bin = dynamic_cast<BinaryExpr*>(&expr)) {
         if (bin->Op == "and")
             return EvaluateBool(*bin->Left, row) && EvaluateBool(*bin->Right, row);
@@ -23,7 +26,7 @@ bool Executor::EvaluateBool(Expression& expr, const std::unordered_map<std::stri
         if (unary->Op == "not")
             return !EvaluateBool(*unary->Operand, row);
     }
-    if (auto* isNull = dynamic_cast<IsNullExpr*>(&expr)) {
+    if (auto* isNull = dynamic_cast<IsNullExpr*>(&expr)) { // is not null / is null
         auto val = GetValue(*isNull->Value, row);
         bool isnull = std::holds_alternative<std::monostate>(val);
         return isnull ? !isNull->Not : isNull->Not;
@@ -49,41 +52,28 @@ bool Executor::EvaluateBool(Expression& expr, const std::unordered_map<std::stri
         std::string p = DbObjectToString(pat);
         return LikeMatch(s, p);
     }
-    // Literal? Evaluate a literal as bool?
-    if (auto* lit = dynamic_cast<Literal*>(&expr)) {
-        const auto& val = lit->Value;
-        if (std::holds_alternative<bool>(val)) return std::get<bool>(val);
-        if (std::holds_alternative<int>(val)) return std::get<int>(val) != 0;
-        if (std::holds_alternative<double>(val)) return std::get<double>(val) != 0.0;
-        if (std::holds_alternative<std::string>(val)) return !std::get<std::string>(val).empty();
-        return false;
-    }
-    // ColumnRef: treat as boolean? Not typical, but for simplicity return true if not null.
-    if (auto* cr = dynamic_cast<ColumnRef*>(&expr)) {
-        auto val = GetValue(expr, row);
-        return !std::holds_alternative<std::monostate>(val);
-    }
     return false;
 }
 
-// ----------------------------------------------------------------------------
-// Helper: Get value of an expression from a row
-// ----------------------------------------------------------------------------
-DbObject Executor::GetValue(Expression& expr, const std::unordered_map<std::string, DbObject>& row) {
+// Get value of an expression from a row
+DbObject Executor::GetValue(Expression& expr, const DbRow& row) {
+
     if (auto* lit = dynamic_cast<Literal*>(&expr)) {
         return lit->Value;
     }
+
     if (auto* cr = dynamic_cast<ColumnRef*>(&expr)) {
         std::string fullName = cr->Column;
-        if (cr->TableName.has_value()) {
+
+        if (cr->TableName.has_value() && cr->WasQualified) {
             fullName = cr->TableName.value() + "." + cr->Column;
             auto it = row.find(fullName);
             if (it != row.end()) return it->second;
         }
-        // Try unqualified
+
         auto it = row.find(cr->Column);
         if (it != row.end()) return it->second;
-        // Try table.column (if table is known from binding)
+        // check again : todo : fix this
         if (cr->TableName.has_value()) {
             std::string withTable = cr->TableName.value() + "." + cr->Column;
             it = row.find(withTable);
@@ -91,31 +81,80 @@ DbObject Executor::GetValue(Expression& expr, const std::unordered_map<std::stri
         }
         return std::monostate{};
     }
+
     if (auto* bin = dynamic_cast<BinaryExpr*>(&expr)) {
         if (bin->Op == "+" || bin->Op == "-" || bin->Op == "*" || bin->Op == "/") {
             auto left = GetValue(*bin->Left, row);
             auto right = GetValue(*bin->Right, row);
             return Calculate(left, bin->Op, right);
         }
-        // For boolean operators, we don't return a value (they are used in EvaluateBool)
         return std::monostate{};
     }
-    if (auto* unary = dynamic_cast<UnaryExpr*>(&expr)) {
-        // Not supported for value extraction
-        return std::monostate{};
-    }
-    if (auto* fn = dynamic_cast<FunctionExpr*>(&expr)) {
-        // Not implemented
+
+      if (auto* fn = dynamic_cast<FunctionExpr*>(&expr)) {
+        std::string fname = fn->Name;
+        std::transform(fname.begin(), fname.end(), fname.begin(), ::tolower);
+
+        //COALESCE(a, b, c)  first non-null
+        if (fname == "coalesce") {
+            for (auto& arg : fn->Arguments) {
+                auto val = GetValue(*arg, row);
+                if (!std::holds_alternative<std::monostate>(val))
+                    return val;
+            }
+            return std::monostate{};
+        }
+
+        //NULLIF(a, b) → null if a==b, else a ──────────────────
+        if (fname == "nullif" && fn->Arguments.size() == 2) {
+            auto a = GetValue(*fn->Arguments[0], row);
+            auto b = GetValue(*fn->Arguments[1], row);
+            if (AreEqual(a, b)) return std::monostate{};
+            return a;
+        }
+
+        //ROUND(val, decimals)
+        if (fname == "round" && !fn->Arguments.empty()) {
+            auto val = GetValue(*fn->Arguments[0], row);
+            int decimals = 0;
+            if (fn->Arguments.size() >= 2) {
+                auto d = GetValue(*fn->Arguments[1], row);
+                if (std::holds_alternative<int>(d))
+                    decimals = std::get<int>(d);
+            }
+            double v; if (!TryDouble(val, v)) return std::monostate{};
+            double factor = std::pow(10.0, decimals);
+            return std::round(v * factor) / factor;
+        }
+
+        //LENGTH(str)
+        if (fname == "length" && !fn->Arguments.empty()) {
+            auto val = GetValue(*fn->Arguments[0], row);
+            if (std::holds_alternative<std::string>(val))
+                return (int)std::get<std::string>(val).size();
+            return std::monostate{};
+        }
+
+        // UPPER(str)/LOWER(str)
+        if ((fname == "upper" || fname == "lower") && !fn->Arguments.empty()) {
+            auto val = GetValue(*fn->Arguments[0], row);
+            if (!std::holds_alternative<std::string>(val)) return std::monostate{};
+            std::string s = std::get<std::string>(val);
+            if (fname == "upper")
+                std::transform(s.begin(), s.end(), s.begin(), ::toupper);
+            else
+                std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+            return s;
+        }
+
+        // aggregate functions cannot be evaluated on single row they are precomputed by ComputeGroup and stored in the row
         return std::monostate{};
     }
     return std::monostate{};
 }
 
-// ----------------------------------------------------------------------------
-// Helper: Compare two DbObject values with given operator
-// ----------------------------------------------------------------------------
 bool Executor::Compare(const DbObject& left, const std::string& op, const DbObject& right) {
-    // Null handling
+
     if (std::holds_alternative<std::monostate>(left) && std::holds_alternative<std::monostate>(right))
         return op == "=";
     if (std::holds_alternative<std::monostate>(left) || std::holds_alternative<std::monostate>(right))
@@ -135,11 +174,7 @@ bool Executor::AreEqual(const DbObject& a, const DbObject& b) {
     return Compare(a, "=", b);
 }
 
-// ----------------------------------------------------------------------------
-// Helper: CompareAny returns -1, 0, 1
-// ----------------------------------------------------------------------------
 int Executor::CompareAny(const DbObject& a, const DbObject& b) {
-    // Try numeric conversion
     double da, db;
     bool aNumeric = TryDouble(a, da);
     bool bNumeric = TryDouble(b, db);
@@ -148,7 +183,6 @@ int Executor::CompareAny(const DbObject& a, const DbObject& b) {
         if (da > db) return 1;
         return 0;
     }
-    // Fallback to string comparison
     std::string sa = DbObjectToString(a);
     std::string sb = DbObjectToString(b);
     int len = std::min(sa.size(), sb.size());
@@ -161,9 +195,6 @@ int Executor::CompareAny(const DbObject& a, const DbObject& b) {
     return 0;
 }
 
-// ----------------------------------------------------------------------------
-// Helper: Try to convert DbObject to double
-// ----------------------------------------------------------------------------
 bool Executor::TryDouble(const DbObject& v, double& result) {
     if (std::holds_alternative<int>(v)) {
         result = static_cast<double>(std::get<int>(v));
@@ -188,9 +219,6 @@ bool Executor::TryDouble(const DbObject& v, double& result) {
     return false;
 }
 
-// ----------------------------------------------------------------------------
-// Helper: Calculate arithmetic
-// ----------------------------------------------------------------------------
 DbObject Executor::Calculate(const DbObject& a, const std::string& op, const DbObject& b) {
     double da,db;
     if (!TryDouble(a,  da) || !TryDouble(b,  db))
@@ -204,18 +232,13 @@ DbObject Executor::Calculate(const DbObject& a, const std::string& op, const DbO
         res = da / db;
     }
     else return std::monostate{};
-    // Preserve integer type if both operands were ints
     if (std::holds_alternative<int>(a) && std::holds_alternative<int>(b)) {
-        // Check if result fits in int
         if (res == static_cast<double>(static_cast<int>(res)))
             return static_cast<int>(res);
     }
     return res;
 }
 
-// ----------------------------------------------------------------------------
-// Like pattern matching (recursive with memoization)
-// ----------------------------------------------------------------------------
 bool Executor::LikeMatch(const std::string& s, const std::string& pattern) {
     std::vector<std::vector<int>>dp;
     dp=std::vector<std::vector<int>>(s.size()+1,std::vector<int>(pattern.size()+1,-1));
@@ -240,6 +263,7 @@ bool Executor::RecLike(int i, int j, const std::string& s, const std::string& pa
             if (RecLike(k, j+1, s, pattern, dp))
                 return ret = true;
         }
+        return ret=false;
     }
 
     if (pattern[j] == '?' || pattern[j] == s[i]) {

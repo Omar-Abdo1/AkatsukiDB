@@ -31,10 +31,10 @@ public:
 
     void DropTable(const std::string& name);
 
-    // Return a const reference! Look, but don't touch, and don't copy!
-    const TableDefinition& GetTable(const std::string& tableName) const;
+    TableDefinition& GetTable(const std::string& tableName);  // for modifications
+    const TableDefinition& GetTable(const std::string& tableName) const;  // for read-only
 
-    const TableDefinition& CreateTable(
+     TableDefinition& CreateTable(
         const std::string& tableName,
         std::vector<ColumnDefinition> columns,
         const std::vector<std::string>& primaryKey,

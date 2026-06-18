@@ -42,6 +42,12 @@ static std::string DbObjectToString(const DbObject& obj) {
  return "???";
 }
 
+struct ScannedRow {
+    int   PageId;
+    int   SlotIndex;
+    DbRow Row;
+};
+
 class Executor {
 public:
     // Type aliases for maps passed from AkatsukiEngine
@@ -82,7 +88,7 @@ private:
       void OpenTable(const std::string& name);
 
     // for delete/updata/select to get the rows from where expression
-    std::vector<DbRow> GetRowEntries(TableManager& tm,
+    std::vector<ScannedRow> GetScannedRows(TableManager& tm,
         const TableDefinition& def, const ScanPlan& plan);
 
  bool PassesFilter(const DbRow& row, const ScanPlan& plan);
@@ -99,9 +105,7 @@ private:
     const DbRow& row,
     const TableDefinition& def);
 
-    void DoDelete(const std::string& name,
-    const RowEntry& entry, const DbRow& row,
-    const TableDefinition& def);
+    void DoDelete(const std::string& name,int pageId,int slotIndex,const DbRow& row,const TableDefinition& def);
 
 
     // for select

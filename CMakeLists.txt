@@ -5,6 +5,9 @@ project(AkatsukiDB_Cpp)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -g -O0 -fno-omit-frame-pointer")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
+
 
 #EXTERNAL DEPENDENCIES
 include(FetchContent)
@@ -23,6 +26,8 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(replxx) # for support history like terminal 
 
+
+find_package(SQLite3 REQUIRED)
 
 
 
@@ -43,6 +48,13 @@ target_link_libraries(AkatsukiDB_lib PUBLIC nlohmann_json::nlohmann_json)
 # Build the actual program you can run from the terminal.
 add_executable(AkatsukiDB_Cpp cli/main.cpp)
 
+add_executable(benchmark benchmark/benchmark.cpp)
+
 
 # through AkatsukiDB_lib straight into your executable. 
 target_link_libraries(AkatsukiDB_Cpp PRIVATE AkatsukiDB_lib replxx)
+
+
+target_link_libraries(benchmark PRIVATE AkatsukiDB_lib SQLite::SQLite3)
+
+
