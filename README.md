@@ -708,7 +708,6 @@ Clustered :
 
 - [ ] MVCC snapshot isolation
 - [ ] REST API (cpp-httplib)
-- [ ] Benchmark vs SQLite
 - [ ] Lazy table loading
 - [ ] VACUUM (reclaim soft-deleted space)
 - [ ] Concurrent reader-writer lock (`std::shared_mutex`)
