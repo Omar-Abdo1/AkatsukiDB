@@ -1,2 +1,0 @@
-/usr/bin/ar qc libreplxx.a CMakeFiles/replxx.dir/src/ConvertUTF.cpp.o CMakeFiles/replxx.dir/src/conversion.cxx.o CMakeFiles/replxx.dir/src/escape.cxx.o CMakeFiles/replxx.dir/src/history.cxx.o CMakeFiles/replxx.dir/src/prompt.cxx.o CMakeFiles/replxx.dir/src/replxx.cxx.o CMakeFiles/replxx.dir/src/replxx_impl.cxx.o CMakeFiles/replxx.dir/src/terminal.cxx.o CMakeFiles/replxx.dir/src/util.cxx.o CMakeFiles/replxx.dir/src/wcwidth.cpp.o CMakeFiles/replxx.dir/src/windows.cxx.o
-/usr/bin/ranlib libreplxx.a
