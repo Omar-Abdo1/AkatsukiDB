@@ -638,13 +638,13 @@ SHOW INDEXES employees
 
 ## Benchmarks (10k rows, Release build, [Intel(R) Core(TM) i5-8250U CPU @ 1.60GHz])
 
-| Operation                     | AkatsukiDB | SQLite   | Notes                                  |
-|-------------------------------|------------|----------|------------------------------------------|
-| 10k INSERTs (no explicit txn) | 6622 ms    | 33212 ms | SQLite fsyncs per implicit txn here     |
-| PK point query x1000          | 714 ms     | 47.6 ms  | per-call SQL re-parse (see Limitations) |
-| Full scan, 66% selectivity    | 108 ms     | 0.84 ms  | DbRow allocation overhead (see Limitations)|
-| Indexed scan, 66% selectivity | 146 ms     | 0.057 ms | non-selective predicate — sequential scan is the theoretically correct choice here too |
-| GROUP BY 10k rows             | 188 ms     | 35.6 ms  |                                          |
+| Operation                     | AkatsukiDB | SQLite   |
+|-------------------------------|------------|----------|
+| 10k INSERTs                   | 3976.01 ms | 38476.1 ms | 
+| PK point query x1000          | 650.162 ms     | 21.6526 ms | 
+| Full scan                     |  89.3798 ms     | 0.948444 ms  | 
+| Indexed scan                  | 1.19248 ms     | 0.091558 ms |
+| GROUP BY 10k rows             | 86.8655 ms     | 4.04403 ms  |                                          
 
 ## Performance Notes & Limitations
 
