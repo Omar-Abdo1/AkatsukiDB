@@ -5,8 +5,8 @@ project(AkatsukiDB_Cpp)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -g -O0 -fno-omit-frame-pointer")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -g -O0 -fno-omit-frame-pointer")
+#set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")  # only for debugging
 
 
 #EXTERNAL DEPENDENCIES
@@ -27,7 +27,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(replxx) # for support history like terminal 
 
 
-find_package(SQLite3 REQUIRED)
+#find_package(SQLite3 REQUIRED) # only for benchmark
 
 
 
@@ -35,26 +35,20 @@ file(GLOB_RECURSE AKATSUKI_SOURCES CONFIGURE_DEPENDS
         "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
 )
 
-# Bundle all your engine code into one static library.
 add_library(AkatsukiDB_lib STATIC ${AKATSUKI_SOURCES})
 
-# Tell the library where to find its own header files.
 target_include_directories(AkatsukiDB_lib PUBLIC include)
 
-# Link the JSON library to your core database library!
 target_link_libraries(AkatsukiDB_lib PUBLIC nlohmann_json::nlohmann_json)
 
 
-# Build the actual program you can run from the terminal.
 add_executable(AkatsukiDB_Cpp cli/main.cpp)
 
-add_executable(benchmark benchmark/benchmark.cpp)
+#add_executable(benchmark benchmark/benchmark.cpp) # for benchmark
 
-
-# through AkatsukiDB_lib straight into your executable. 
 target_link_libraries(AkatsukiDB_Cpp PRIVATE AkatsukiDB_lib replxx)
 
 
-target_link_libraries(benchmark PRIVATE AkatsukiDB_lib SQLite::SQLite3)
+#target_link_libraries(benchmark PRIVATE AkatsukiDB_lib SQLite::SQLite3) # for benchmark
 
 
