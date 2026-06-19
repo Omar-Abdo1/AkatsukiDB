@@ -27,6 +27,106 @@ using namespace std;
 #include <iomanip>
 
 
+#include <thread>
+#include <chrono>
+#include <iostream>
+#include <string>
+
+namespace AkatsukiDB::Console {
+
+    void SleepMs(int ms) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+    }
+
+   void TypeWrite(const std::string& text, int delayMs = 2) {
+    for (const auto &c : text) {
+        std::cout << c << std::flush;
+        SleepMs(delayMs);
+    }
+}
+
+   void BootLine(int idx, const std::string& text) {
+    std::cout << "\033[90m";
+
+    std::cout << "["
+              << std::right
+              << std::setw(2)
+              << std::setfill('0')
+              << idx
+              << "] ";
+
+    std::cout << std::left
+              << std::setfill(' ')
+              << std::setw(35)
+              << text;
+
+    SleepMs(300);
+
+    std::cout << "\033[32mOK\033[0m\n";
+}
+
+    void ShowStartup() {
+
+        std::cout << "\033[2J\033[H";
+
+        std::cout << "\033[31m";
+
+        TypeWrite(R"(
+
+═══════════════════════════════════════════════════════════════
+
+ █████╗ ██╗  ██╗ █████╗ ████████╗███████╗██╗   ██╗██╗  ██╗██╗
+██╔══██╗██║ ██╔╝██╔══██╗╚══██╔══╝██╔════╝██║   ██║██║ ██╔╝██║
+███████║█████╔╝ ███████║   ██║   ███████╗██║   ██║█████╔╝ ██║
+██╔══██║██╔═██╗ ██╔══██║   ██║   ╚════██║██║   ██║██╔═██╗ ██║
+██║  ██║██║  ██╗██║  ██║   ██║   ███████║╚██████╔╝██║  ██╗██║
+╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝
+
+██████╗ ██████╗
+██╔══██╗██╔══██╗
+██║  ██║██████╔╝
+██║  ██║██╔══██╗
+██████╔╝██████╔╝
+╚═════╝ ╚═════╝
+
+                Relational Database Engine
+
+═══════════════════════════════════════════════════════════════
+
+)",1);
+
+        std::cout << "\033[0m";
+
+        std::cout << "Version        : 1.0\n";
+        std::cout << "Language       : C++20\n";
+        std::cout << "Storage Model  : Page-Based\n";
+        std::cout << "Index Engine   : B+ Tree\n";
+        std::cout << "Recovery       : WAL\n\n";
+
+        std::cout << "───────────────────────────────────────────────────────────────\n\n";
+
+        BootLine(1, "Loading Storage Layout ...............");
+        BootLine(2, "Initializing Page Manager ............");
+        BootLine(3, "Starting Buffer Pool .................");
+        BootLine(4, "Loading Table Registry ...............");
+        BootLine(5, "Recovering WAL .......................");
+        BootLine(6, "Opening B+Tree Indexes ...............");
+        BootLine(7, "Initializing AQL Parser ..............");
+        BootLine(8, "Starting Query Executor ..............");
+
+        std::cout << "\n";
+        std::cout << "───────────────────────────────────────────────────────────────\n\n";
+
+        std::cout << "\033[32mDatabase Ready.\033[0m\n\n";
+
+        std::cout << "\033[90mType EXIT to quit.\n";
+        std::cout << "Type SHOW TABLES to inspect schemas.\033[0m\n\n";
+
+        SleepMs(500);
+    }
+
+}
+
 namespace AkatsukiDB::Console {
     //ANSI Color Codes
     const std::string COLOR_RED = "\033[31m";
@@ -263,7 +363,6 @@ namespace AkatsukiDB::Console {
 }
 
 int main() {
-
-    AkatsukiDB::Console::Run();
-    
+         AkatsukiDB::Console::ShowStartup();
+        AkatsukiDB::Console::Run();
 }
