@@ -122,7 +122,12 @@ QueryResult Executor::ExecuteSelect(SelectStatement& stmt) {
     if (stmt.IsDistinct)
         projected = ApplyDistinct(projected);
 
-    return QueryResult::Success(outCols, std::move(projected));
+std::string planLabel = plan.Type == ScanType::Point ? "Index Scan (Point)"
+                       : plan.Type == ScanType::Range ? "Index Scan (Range)"
+                       : "Full Scan";
+auto result = QueryResult::Success(outCols, std::move(projected));
+result.PlanUsed = planLabel;
+return result;
 }
 
 void Executor::PrefixRow(DbRow& target,
