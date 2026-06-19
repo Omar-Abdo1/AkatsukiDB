@@ -104,6 +104,18 @@ void TableManager::UpdateRow(int pageId, int slotIndex, std::span<const uint8_t>
     page->MarkDirty();
 }
 
+void TableManager::UndeleteRow(int pageId, int slotIndex,
+    std::span<const uint8_t> originalRowData)
+{
+    auto page = _bufferPool->GetPage(pageId);
+
+    auto slot = page->GetSlot(slotIndex, _rowSizeBytes);
+
+    slot[_rowSizeBytes-1] = 0;
+
+    page->MarkDirty();
+}
+
 void TableManager::DeleteRow(int pageId, int slotIndex) {
     auto page = _bufferPool->GetPage(pageId);
     auto slotSpan = page->GetSlot(slotIndex, _rowSizeBytes);

@@ -12,6 +12,9 @@ QueryResult Executor::ExecuteInsert(InsertStatement& stmt) {
     if (!_registry.TableExists(tableName))
         return QueryResult::Error("Table Name " + stmt.TableName + " does not exist");
 
+
+
+
      auto& def = _registry.GetTable(tableName);
     auto tmIt = _tables.find(tableName);
     if (tmIt == _tables.end())
@@ -28,6 +31,11 @@ QueryResult Executor::ExecuteInsert(InsertStatement& stmt) {
     }
 
     int count = 0;
+
+    bool wasAuto = (_txnManager.CurrentTxnId() == 0);
+    uint32_t txnId = GetOrBeginTxn();
+
+
     for (auto& rowDict : stmt.Rows) {
         // Validate columns exist
         for (const auto& [k, v] : rowDict) {
@@ -106,9 +114,13 @@ QueryResult Executor::ExecuteInsert(InsertStatement& stmt) {
             }
         }
 
+
+
         // Write row to storage
         std::vector<std::uint8_t> bytes = RowSerializer::Serialize(rowDict, def.Columns, def.RowSizeBytes);
         auto [pageId, slotIndex] = tm->InsertRow(bytes);
+
+        _txnManager.RecordInsert(txnId, tableName,pageId, slotIndex);
 
         // Update all indexes
         for (size_t i = 0; i < def.Indexes.size(); ++i) {
@@ -130,5 +142,6 @@ QueryResult Executor::ExecuteInsert(InsertStatement& stmt) {
         }
         ++count;
     }
+    AutoCommit(txnId,wasAuto);
     return QueryResult::Affected(count);
 }

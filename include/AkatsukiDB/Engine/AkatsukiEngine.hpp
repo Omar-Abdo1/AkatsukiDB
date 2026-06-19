@@ -29,6 +29,10 @@ private:
     std::unique_ptr<StorageLayout> _layout;
     std::unique_ptr<TableRegistry> _registry;
     std::unique_ptr<Executor> _executor;
+    std::unique_ptr<WalManager>         _wal;
+    std::unique_ptr<TransactionManager> _txnMgr;
+
+    void Recover(); // crash recovery
 
     // in-memory :
 

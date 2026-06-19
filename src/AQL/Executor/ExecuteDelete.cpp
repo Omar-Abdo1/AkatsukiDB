@@ -21,11 +21,17 @@ QueryResult Executor::ExecuteDelete(DeleteStatement& stmt) {
             return QueryResult::Error(*checkErr);
     }
 
+    bool wasAuto = (_txnManager.CurrentTxnId() == 0);
+    uint32_t txnId = GetOrBeginTxn();
+
     int count = 0;
     for (const auto& rowInfo : scanned) {
+        auto beforeBytes = RowSerializer::Serialize(rowInfo.Row, def.Columns, def.RowSizeBytes);
+        _txnManager.RecordDelete(txnId, name, rowInfo.PageId, rowInfo.SlotIndex, beforeBytes);
         DoDelete(name, rowInfo.PageId, rowInfo.SlotIndex, rowInfo.Row, def);
         ++count;
     }
+    AutoCommit(txnId, wasAuto);
     return QueryResult::Affected(count);
 }
 

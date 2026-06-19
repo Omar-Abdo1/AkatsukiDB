@@ -22,13 +22,18 @@ AkatsukiEngine::AkatsukiEngine(const std::string& dataDirectory) {
     _layout = std::make_unique<StorageLayout>(dataDirectory);
     _registry = std::make_unique<TableRegistry>(*_layout);
 
+    _wal = std::make_unique<WalManager>(_layout->WalFile());
+    _txnMgr = std::make_unique<TransactionManager>(*_wal);
+
     for (const auto& name : _registry->GetAllTableNames())
         OpenTable(name);
 
     BuildReferencedByMap();
 
+    Recover(); // undo any uncommited transactions
+
     _executor = std::make_unique<Executor>(
-        *_registry, *_layout, _tables, _indexes, _referencedBy);
+        *_registry, *_layout, _tables, _indexes, _referencedBy,*_wal,*_txnMgr);
 }
 
 AkatsukiEngine::~AkatsukiEngine() {
@@ -48,33 +53,6 @@ QueryResult AkatsukiEngine::Execute(const std::string& aql) {
         return QueryResult::Error(ex.what());
     }
 }
-
-// QueryResult AkatsukiEngine::Execute(const std::string& sql) {
-//     auto t0 = std::chrono::high_resolution_clock::now();
-//     Tokenizer tokenizer(sql);
-//     auto tokens = tokenizer.Tokenize();
-//     auto t1 = std::chrono::high_resolution_clock::now();
-//
-//     Parser parser;
-//     auto stmt = parser.Parse(tokens);
-//     auto t2 = std::chrono::high_resolution_clock::now();
-//
-//     auto result = _executor->Execute(*stmt); // validate+plan+scan all happen inside
-//     auto t3 = std::chrono::high_resolution_clock::now();
-//
-//     static long long tok=0, par=0, exe=0; static int n=0;
-//     tok += std::chrono::duration_cast<std::chrono::microseconds>(t1-t0).count();
-//     par += std::chrono::duration_cast<std::chrono::microseconds>(t2-t1).count();
-//     exe += std::chrono::duration_cast<std::chrono::microseconds>(t3-t2).count();
-//     if (++n == 1000) {
-//         std::cerr << "avg per call (us): tokenize=" << tok/n
-//                   << " parse=" << par/n << " execute=" << exe/n << "\n";
-//         tok = par = exe = 0; n = 0;
-//     }
-//     return result;
-// }
-
-
 
 void AkatsukiEngine::OpenTable(const std::string& name) {
     std::string lowerName = name;
@@ -131,4 +109,46 @@ void AkatsukiEngine::CloseTable(const std::string& name) {
         CloseTable(name);
 }
 
+
+void AkatsukiEngine::Recover() {
+    auto records = _wal->ReadAll();
+    if (records.empty()) return;
+
+    std::unordered_set<uint32_t> committed;
+    for (auto& rec : records)
+        if (rec.Header.Type == WalType::Commit)
+            committed.insert(rec.Header.TxnId);
+
+    std::unordered_map<uint32_t, std::vector<WalRecord>> uncommitted;
+    for (auto& rec : records) {
+        if (rec.Header.Type == WalType::Begin ||
+            rec.Header.Type == WalType::Commit ||
+            rec.Header.Type == WalType::Rollback) continue;
+        if (!committed.count(rec.Header.TxnId))
+            uncommitted[rec.Header.TxnId].push_back(rec);
+    }
+
+    for (auto& [txnId, changes] : uncommitted) {
+        for (int i = (int)changes.size() - 1; i >= 0; --i) {
+            auto& rec = changes[i];
+            std::string table(rec.Header.TableName);
+            if (!_tables.count(table)) continue;
+            auto& tm = *_tables[table];
+            const auto& def = _registry->GetTable(table);
+
+            // we are not removing from the index for simplicity !
+            if (rec.Header.Type == WalType::Insert) {
+                auto bytes = tm.ReadRow(rec.Header.PageId, rec.Header.SlotIndex);
+                auto row   = RowSerializer::Deserialize(bytes, def.Columns);
+                tm.DeleteRow(rec.Header.PageId, rec.Header.SlotIndex);
+            }
+            else if (rec.Header.Type == WalType::Update) {
+                tm.UpdateRow(rec.Header.PageId, rec.Header.SlotIndex, rec.RowData);
+            }
+            else if (rec.Header.Type == WalType::Delete) {
+                tm.UndeleteRow(rec.Header.PageId, rec.Header.SlotIndex, rec.RowData);
+            }
+        }
+    }
+}
 

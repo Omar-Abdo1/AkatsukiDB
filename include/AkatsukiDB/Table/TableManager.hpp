@@ -29,6 +29,9 @@ public:
 
     std::pair<int,int>InsertRow(std::span<const uint8_t> rowBytes);
 
+    void UndeleteRow(int pageId, int slotIndex, std::span<const uint8_t> originalRowData);
+
+
     std::vector<RowEntry>FullScan();
 
     std::vector<uint8_t>ReadRow(int pageId,int slotIndex);

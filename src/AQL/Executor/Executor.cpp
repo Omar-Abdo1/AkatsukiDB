@@ -4,20 +4,21 @@
 
 #include "AkatsukiDB/AQL/Executor.hpp"
 
+#include "AkatsukiDB/Statments/Transactions.hpp"
 #include "AkatsukiDB/Storage/StorageLayout.hpp"
 
 Executor::Executor(TableRegistry& registry,
                    StorageLayout& layout,
                    TableManagerMap& tables,
                    IndexMap& indexes,
-                   ReferencedByMap& referencedBy)
+                   ReferencedByMap& referencedBy,WalManager&wal,TransactionManager&txnManger)
     : _registry(registry)
     , _layout(layout)
     , _tables(tables)
     , _indexes(indexes)
     , _referencedBy(referencedBy)
     , _validator(registry),
-   _scanPlanner(indexes,registry)
+   _scanPlanner(indexes,registry),_wal(wal),_txnManager(txnManger)
 {}
 
 QueryResult Executor::Execute(IStatement& stmt) {
@@ -41,6 +42,13 @@ QueryResult Executor::Execute(IStatement& stmt) {
             return ExecuteTruncate(*s);
         if (auto* s = dynamic_cast<ShowStatement*>(&stmt))
             return ExecuteShow(*s);
+
+        if (dynamic_cast<BeginStatement*>(&stmt))    return ExecuteBegin();
+
+        if (dynamic_cast<CommitStatement*>(&stmt))   return ExecuteCommit();
+
+        if (dynamic_cast<RollbackStatement*>(&stmt)) return ExecuteRollback();
+
         return QueryResult::Error("Statement not supported yet.");
     } catch (const std::exception& ex) {
         return QueryResult::Error(ex.what());

@@ -31,6 +31,9 @@ QueryResult Executor::ExecuteUpdate(UpdateStatement& stmt) {
 
     std::vector<RowChange> changes;
 
+    bool wasAuto = (_txnManager.CurrentTxnId() == 0);
+    uint32_t txnId = GetOrBeginTxn();
+
     for (auto& [PageId, SlotIndex, Row] : scanned) {
         RowChange change;
         change.PageId    = PageId;
@@ -107,7 +110,10 @@ QueryResult Executor::ExecuteUpdate(UpdateStatement& stmt) {
         auto newBytes = RowSerializer::Serialize(
             c.NewRow, def.Columns, def.RowSizeBytes);
 
+        auto beforeBytes = RowSerializer::Serialize(c.OldRow, def.Columns, def.RowSizeBytes);
+
         tm.UpdateRow(c.PageId, c.SlotIndex, newBytes);
+        _txnManager.RecordUpdate(txnId, name, c.PageId, c.SlotIndex, beforeBytes);
 
         if (_indexes.count(name)) {
             auto& idxList = _indexes[name];
@@ -121,6 +127,7 @@ QueryResult Executor::ExecuteUpdate(UpdateStatement& stmt) {
         }
         ++count;
     }
-
+    
+    AutoCommit(txnId, wasAuto);
     return QueryResult::Affected(count);
 }

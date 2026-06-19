@@ -31,6 +31,7 @@
 #include "AkatsukiDB/Statments/SelectStatement.hpp"
 #include "AkatsukiDB/Statments/ShowStatement.hpp"
 #include "AkatsukiDB/Statments/UpdateStatement.hpp"
+#include "AkatsukiDB/WAL/TransactionManager.hpp"
 
 
 static std::string DbObjectToString(const DbObject& obj) {
@@ -59,7 +60,7 @@ public:
              StorageLayout& layout,
              TableManagerMap& tables,
              IndexMap& indexes,
-             ReferencedByMap& referencedBy);
+             ReferencedByMap& referencedBy,WalManager&wal ,TransactionManager& txnManger);
 
     QueryResult Execute(IStatement& stmt);
 
@@ -74,6 +75,15 @@ private:
     QueryResult ExecuteDropTable(DropTableStatement& stmt);
     QueryResult ExecuteTruncate(TruncateStatement& stmt);
     QueryResult ExecuteShow(ShowStatement& stmt);
+
+    QueryResult ExecuteBegin();
+    QueryResult ExecuteCommit();
+    QueryResult ExecuteRollback();
+
+
+    // for Transactions :
+    uint32_t GetOrBeginTxn();
+    void     AutoCommit(uint32_t txnId, bool wasAuto);
 
     // for show
    QueryResult ShowSchema(const std::string& tableName);
@@ -180,6 +190,8 @@ private:
      TableManagerMap& _tables;
      IndexMap& _indexes;
      ReferencedByMap& _referencedBy;
+    WalManager& _wal;
+    TransactionManager& _txnManager;
 
     // Helper objects
      QueryValidatorAndBinder _validator;
