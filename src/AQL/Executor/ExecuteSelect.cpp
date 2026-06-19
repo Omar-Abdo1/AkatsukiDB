@@ -84,13 +84,16 @@ QueryResult Executor::ExecuteSelect(SelectStatement& stmt) {
         rows = { ComputeGroup(singleGroup, {}, stmt.Columns) }; // only one ROW
     }
 
+    auto outCols   = GetOutputColumns(stmt.Columns, def, stmt.Joins);
+    auto projected = ProjectRows(rows, stmt.Columns);
+
     // 7. having is like where but we do it after we make the rows into groups
     if (stmt.Having) {
         std::vector<DbRow> filtered;
-        for (auto& row : rows)
+        for (auto& row : projected)
             if (EvaluateBool(*stmt.Having, row))
                 filtered.push_back(std::move(row));
-        rows = std::move(filtered);
+        projected = std::move(filtered);
     }
 
     // 8. window function
@@ -98,27 +101,23 @@ QueryResult Executor::ExecuteSelect(SelectStatement& stmt) {
     for (const auto& sc : stmt.Columns)
         if (sc.IsWindow) { hasWindow = true; break; }
     if (hasWindow)
-        rows = ApplyWindowFunctions(rows, stmt.Columns);
+        projected = ApplyWindowFunctions(projected, stmt.Columns);
 
     // 9 order by
     if (!stmt.OrderBy.empty())
-        ApplyOrderBy(rows, stmt.OrderBy);
+        ApplyOrderBy(projected, stmt.OrderBy);
 
     // 10 offest
     if (stmt.Offset > 0) { // remove {offset} from the result
-        if (stmt.Offset >= (int)rows.size()) rows.clear();
-        else rows.erase(rows.begin(), rows.begin() + stmt.Offset);
+        if (stmt.Offset >= (int)projected.size()) projected.clear();
+        else projected.erase(projected.begin(), projected.begin() + stmt.Offset);
     }
 
     // 11 limit
-    if (stmt.Limit > 0 && stmt.Limit < (int)rows.size())
-        rows.resize(stmt.Limit);
+    if (stmt.Limit > 0 && stmt.Limit < (int)projected.size())
+        projected.resize(stmt.Limit);
 
-    // 12. projection
-    auto outCols   = GetOutputColumns(stmt.Columns, def, stmt.Joins);
-    auto projected = ProjectRows(rows, stmt.Columns);
-
-    // 13
+    // 12
     if (stmt.IsDistinct)
         projected = ApplyDistinct(projected);
 
@@ -199,7 +198,7 @@ std::vector<DbRow> Executor::HashJoin(
             for (const DbRow* rRow : mapIt->second) {
                 DbRow merged = lRow;
                 for (const auto& [Rcol, Robject] : *rRow)
-                    if (merged.find(Rcol)!= merged.end())
+                    if (merged.find(Rcol)== merged.end())
                         merged[Rcol] = Robject;
                 result.push_back(std::move(merged));
             }
@@ -441,7 +440,7 @@ std::vector<DbRow> Executor::ApplyWindowFunctions(
                         }
                         if (!same) rank = i + 1;
                     }
-                    auto &curRow = rows[partition[rank]];
+                    auto &curRow = rows[partition[i]];
                     curRow[outKey] = rank;
                 }
             }
@@ -461,7 +460,7 @@ std::vector<DbRow> Executor::ApplyWindowFunctions(
                         }
                         if (!same) rank++;
                     }
-                    auto &curRow = rows[partition[rank]];
+                    auto &curRow = rows[partition[i]];
                     curRow[outKey] = rank;
                 }
             }
@@ -540,7 +539,8 @@ std::vector<std::string> Executor::GetOutputColumns(
             for (const auto& join : joins) {
                 const auto& jDef = _registry.GetTable(join.TableName);
                 for (const auto& col : jDef.Columns)
-                    result.push_back(join.TableName + "." + col.Name); // for simplicity
+                    result.push_back(
+                        ( join.Alias.empty() ? join.TableName : join.Alias) + "." + col.Name);
             }
             return result;
         }

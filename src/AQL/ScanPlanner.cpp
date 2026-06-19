@@ -124,7 +124,7 @@ bool ScanPlanner::TryIndex(const std::string& table,
 
     // col > val or col >= val → range with Max end
     if (TryGreater(expr, col, val, open)) {
-        val = CoerceToColumnType(col,getColType(col));
+        val = CoerceToColumnType(val,getColType(col));
         auto* tree = FindIndex(table, col);
         if (tree) {
             out.Type           = ScanType::Range;
@@ -138,7 +138,7 @@ bool ScanPlanner::TryIndex(const std::string& table,
 
     // col < val or col <= val → range with Min start
     if (TryLess(expr, col, val, open)) {
-        val = CoerceToColumnType(col,getColType(col));
+        val = CoerceToColumnType(val,getColType(col));
         auto* tree = FindIndex(table, col);
         if (tree) {
             out.Type         = ScanType::Range;

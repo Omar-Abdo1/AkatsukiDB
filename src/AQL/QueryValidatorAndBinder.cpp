@@ -5,6 +5,7 @@
 #include "AkatsukiDB/AQL/QueryValidatorAndBinder.hpp"
 
 #include <algorithm>
+#include <unordered_set>
 
 QueryValidatorAndBinder::QueryValidatorAndBinder(TableRegistry& registry)
     : _registry(registry) {}
@@ -79,10 +80,12 @@ std::optional<std::string> QueryValidatorAndBinder::ValidateSelect(SelectStateme
             return err;
     }
 
+    std::unordered_set<std::string>Aliases;
     for (auto& col : stmt.Columns) {
         if (col.IsStar) continue;
         if (auto err = ValidateExpression(*col.Column, available))
             return err;
+        if (col.Alias.has_value())Aliases.insert(col.Alias.value());
     }
 
     if (stmt.Where) {
@@ -93,14 +96,14 @@ std::optional<std::string> QueryValidatorAndBinder::ValidateSelect(SelectStateme
     for (auto& ob : stmt.OrderBy) {
         std::string col = ob.Column;
         std::transform(col.begin(), col.end(), col.begin(), ::tolower);
-        if (available.find(col) == available.end()) // column with it is all combinations do not exist !!
+        if (available.find(col) == available.end() && Aliases.find(col)==Aliases.end()) // column with it is all combinations do not exist !!
             return "Column " + ob.Column + " in ORDER BY not found";
     }
 
     for (auto& col : stmt.GroupBy) {
         std::string colLower = col;
         std::transform(colLower.begin(), colLower.end(), colLower.begin(), ::tolower);
-        if (available.find(colLower) == available.end())
+        if (available.find(colLower) == available.end() && Aliases.find(col)==Aliases.end())
             return "Column " + col + " in GROUP BY not found";
     }
 
@@ -185,6 +188,7 @@ std::optional<std::string> QueryValidatorAndBinder::ValidateExpression(
             return "Column '" + cr->Column + "' is ambiguous. Use tableName.column to specify.";
 
         // Bind table name
+        if (!cr->TableName.has_value())
         cr->TableName = it->second; // changes will reflect on the main object in heap
         return std::nullopt;
     }

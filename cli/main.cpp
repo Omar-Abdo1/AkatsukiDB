@@ -94,6 +94,7 @@ namespace AkatsukiDB::Console {
 ═══════════════════════════════════════════════════════════════
 
 )",1);
+        SleepMs(500);
 
         std::cout << "\033[0m";
 
@@ -104,6 +105,7 @@ namespace AkatsukiDB::Console {
         std::cout << "Recovery       : WAL\n\n";
 
         std::cout << "───────────────────────────────────────────────────────────────\n\n";
+        SleepMs(300);
 
         BootLine(1, "Loading Storage Layout ...............");
         BootLine(2, "Initializing Page Manager ............");
@@ -363,6 +365,6 @@ namespace AkatsukiDB::Console {
 }
 
 int main() {
-         AkatsukiDB::Console::ShowStartup();
+        // AkatsukiDB::Console::ShowStartup();
         AkatsukiDB::Console::Run();
 }
